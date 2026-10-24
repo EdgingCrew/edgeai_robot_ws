@@ -1,0 +1,5 @@
+{
+    "cmake.sourceDirectory": "/home/josef/Uni/edgeAI/edgeai_robot_ws/src/edgeai_robot_description",
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
+}

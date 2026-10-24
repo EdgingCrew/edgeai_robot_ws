@@ -32,19 +32,11 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "Starting EdgeAI realistic robot simulation..."
+echo "Starting EdgeAI realistic robot simulation and RViz..."
 
-ros2 launch edgeai_robot_description simulation_real.launch.py &
+# The launch file opens one RViz window per robot
+ros2 launch edgeai_robot_description simulation_real.launch.py "$@" &
 SIM_PID=$!
 CHILD_PIDS+=("$SIM_PID")
-
-sleep 5
-
-echo "Starting RViz..."
-
-rviz2 -d \
-    "$WS_DIR/src/edgeai_robot_description/rviz/realistic_robot.rviz" &
-RVIZ_PID=$!
-CHILD_PIDS+=("$RVIZ_PID")
 
 wait "$SIM_PID"

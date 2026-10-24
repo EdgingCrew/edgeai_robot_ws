@@ -1,4 +1,5 @@
-slam_toolbox:
+# Matches slam_toolbox in any robot namespace
+/**/slam_toolbox:
   ros__parameters:
 
     # Plugin params
@@ -12,8 +13,9 @@ slam_toolbox:
     # ROS Parameters
     odom_frame: odom
     map_frame: map
+    map_name: map
     base_frame: base_footprint
-    scan_topic: /scan
+    scan_topic: scan
     use_map_saver: true
     mode: mapping #localization
 
