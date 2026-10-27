@@ -1,0 +1,17 @@
+# Drive to a rescue zone and stay inside it for dwell_time seconds.
+
+# Goal
+string target_id
+geometry_msgs/Pose2D zone      # rescue zone centre in the map frame
+float32 tolerance              # max distance [m] from the zone centre that still counts as inside
+float32 dwell_time             # continuous time [s] the robot must stay inside
+---
+# Result
+bool success
+string message
+builtin_interfaces/Time finished
+---
+# Feedback
+string state                   # NAVIGATING, DWELLING or RECOVERING
+float32 distance_remaining     # [m] straight-line distance to the zone centre
+float32 dwell_elapsed          # [s] continuous time inside the zone so far

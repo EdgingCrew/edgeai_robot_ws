@@ -1,0 +1,4 @@
+# Travel cost from the robot's current pose to each goal (map frame).
+geometry_msgs/Pose2D[] goals    # list of goals
+---
+float64[] costs                 # path length [m] per goal; inf when unreachable
