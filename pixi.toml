@@ -33,8 +33,10 @@ ros-jazzy-nav2-amcl = ">=1.3.10,<2"
 ros-jazzy-nav2-lifecycle-manager = ">=1.3.10,<2"
 ros-jazzy-navigation2 = ">=1.3.10,<2"
 ros-jazzy-nav2-bringup = ">=1.3.10,<2"
+ros-jazzy-ros2action = ">=0.32.7,<0.33"
 
 [activation.env]
 RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 ROS_AUTOMATIC_DISCOVERY_RANGE = "SUBNET"
 ROS_DOMAIN_ID = "0"
+COLCON_DEFAULTS_FILE = "$PIXI_PROJECT_ROOT/colcon_defaults.yaml"
