@@ -1,0 +1,16 @@
+session_name: edgeAI
+start_directory: ~/Uni/edgeAI/edgeai_robot_ws
+shell_command_before:
+  - eval "$(pixi shell-hook)" && source install/setup.bash
+windows:
+  - window_name: sim
+    panes: [./start_sim.sh]
+  - window_name: nav2
+    panes: ["sleep 10 && ros2 launch edgeai_rescue navigation.launch.py rviz:=true"]
+  - window_name: robot_control
+    panes: ["sleep 15 && ros2 launch edgeai_rescue rescue.launch.py"]
+  - window_name: shell
+    layout: even-horizontal
+    panes:
+      - ls
+      - ls
