@@ -10,8 +10,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 install(
   PROGRAMS
-    scripts/rescue_planner
-    scripts/robot_controller
+    scripts/robot_controller_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -22,7 +21,7 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test_allocation.py)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_allocation test/test_allocation.py)
 endif()

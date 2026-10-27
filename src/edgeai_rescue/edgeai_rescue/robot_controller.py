@@ -86,11 +86,11 @@ class RobotController(Node):
         return response
 
     async def path_length(self, pose):
-        if not self.path_client.is_ready():
+        if not self.path_client.server_is_ready():
             return math.inf
         goal = ComputePathToPose.Goal()
-        goal.pose = pose
-        goal.use_start = True
+        goal.goal = self.pose_stamped(pose)
+        goal.use_start = False # calculate from current robot pose
         handle = await self.path_client.send_goal_async(goal)
         if not handle.accepted:
             return math.inf
@@ -114,11 +114,11 @@ class RobotController(Node):
         """
         req = goal_handle.request
         feedback = ExecuteRescue.Feedback()
-        self.get_logger().info(f"[RobotController {self.robot}] Navigating to target {req.target_id} at {req.goal.pose.position.x:.2f}, {req.goal.pose.position.y:.2f}")
+        self.get_logger().info(f"[RobotController-{self.robot}] Navigating to target {req.target_id} at {req.zone.x:.2f}, {req.zone.y:.2f}")
         # send navigation goal
         try:
             feedback.state = "NAVIGATING"
-            outcome = await self.navigate(goal_handle, req.goal.pose.position, feedback)
+            outcome = await self.navigate(goal_handle, req.zone, feedback)
             if outcome == 'canceled':
                 return self.finish(goal_handle, False,'canceled')
             elif outcome == 'failed':
@@ -126,10 +126,15 @@ class RobotController(Node):
             self.stop()
             feedback.state = "DWELLING"
             start = self.get_clock().now()
-            while self.get_clock().now() - start < req.dwell_time:
+            elapsed = 0.0
+            while elapsed < req.dwell_time:
                 if goal_handle.is_cancel_requested:
                     return self.finish(goal_handle, False,'canceled')
+            
                 await self.sleep(self.period)
+                elapsed = (self.get_clock().now() - start).nanoseconds / 1e9
+                feedback.dwell_elapsed = elapsed
+                goal_handle.publish_feedback(feedback)
             return self.finish(goal_handle, True,'succeeded')
 
         finally:
@@ -150,8 +155,13 @@ class RobotController(Node):
         while not result.done():
             if goal_handle.is_cancel_requested:
                 await nav.cancel_goal_async()
+                self.get_logger().info(f"[RobotController-{self.robot}] Goal canceled by client")
                 return 'canceled'
-            feedback.distance_remaining = float(self.distance_to(zone))
+            p = self.pose()
+            if p is None:
+                feedback.distance_remaining = math.inf
+            else:
+                feedback.distance_remaining = math.hypot(zone.x - p[0], zone.y - p[1])
             goal_handle.publish_feedback(feedback)
             await self.sleep(self.period)
         return 'arrived' if result.result().status == GoalStatus.STATUS_SUCCEEDED else 'failed'
@@ -177,4 +187,4 @@ def main():
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        rclpy.shutdown()
+        rclpy.try_shutdown()

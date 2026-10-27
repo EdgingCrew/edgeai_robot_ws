@@ -38,7 +38,9 @@ def generate_launch_description():
                 'global_frame': 'map',
                 'base_frame': 'base_link',
                 'period': 0.5,
+                'use_sim_time': True,
             }],
+            remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
         ))
 
 
