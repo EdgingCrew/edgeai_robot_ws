@@ -45,6 +45,7 @@ class RobotController(Node):
                                           cancel_callback= lambda _: CancelResponse.ACCEPT,
                                           callback_group=self.cb)
         self.create_service(EstimateCosts, "estimate_costs", self.estimate_costs_callback, callback_group=self.cb)
+        self.get_logger().info(f"[RobotController-{self.robot}]: Initialized!")
 
     async def sleep(self, seconds):
         """Non-blocking sleep in node time (sim time with use_sim_time)."""
@@ -101,7 +102,7 @@ class RobotController(Node):
 
     # execute_rescue
     async def rescue_goal_callback(self, goal_request):
-        if goal_request.target_id != self.target_id:
+        if self.target_id != '' and self.target_id != goal_request.target_id:
             self.get_logger().warn(f"Rejecting rescue goal for target {goal_request.target_id}, currently rescuing {self.target_id}")
             return GoalResponse.REJECT
         self.target_id = goal_request.target_id
