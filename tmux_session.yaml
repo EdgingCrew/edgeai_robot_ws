@@ -8,9 +8,11 @@ windows:
   - window_name: nav2
     panes: ["sleep 10 && ros2 launch edgeai_rescue navigation.launch.py rviz:=true"]
   - window_name: robot_control
-    panes: ["sleep 15 && ros2 launch edgeai_rescue rescue.launch.py"]
+    panes: ["sleep 15 && ros2 launch edgeai_rescue robot_controller.launch.py"]
+  - window_name: planner
+    panes: ["sleep 20 && ros2 launch edgeai_rescue planner.launch.py"]
   - window_name: shell
-    layout: even-horizontal
+    layout: even-vertical
     panes:
       - ls
       - ls
