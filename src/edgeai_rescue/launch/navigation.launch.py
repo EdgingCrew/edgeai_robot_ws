@@ -9,16 +9,9 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-
+from edgeai_rescue.utils.launch_utils import load_robots
 from ament_index_python.packages import get_package_share_directory
 
-
-# Spawn poses from ROBOTS in edgeai_robot_description/launch/simulation_real.launch.py
-# (Gazebo world frame). Keep the two lists in sync.
-ROBOTS = [
-    {'name': 'robot1', 'x': -1.5, 'y': -1.5, 'yaw': 0.0},
-    {'name': 'robot2', 'x': 1.5, 'y': 1.5, 'yaw': math.pi},
-]
 
 # The packaged edgeai_arena map was recorded from robot1's spawn pose, so its
 # map frame sits at world (-1.5, -1.5) with no rotation: map = world + (1.5, 1.5).
@@ -47,6 +40,8 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('edgeai_rescue')
     pkg_description = get_package_share_directory('edgeai_robot_description')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
+
+    ROBOTS = load_robots()
 
     map_arg = DeclareLaunchArgument(
         'map',

@@ -1,0 +1,8 @@
+# Rescue planner parameters.
+# Tolerance and dwell time are placeholders until the official numbers are published.
+planner_node:
+  ros__parameters:
+    zone_offset: 0.4        # [m] rescue zone centre in front of the marker (>= 0.35 keeps every zone reachable on edgeai_arena)
+    coop_spacing: 0.7       # [m] distance between the two zones of a cooperative target
+    tolerance: 0.3          # [m] max distance from the zone centre that still counts as inside
+    dwell_time: 5.0         # [s] continuous time a robot must stay inside its zone

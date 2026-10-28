@@ -12,11 +12,7 @@ from launch.substitutions import LaunchConfiguration
 
 from ament_index_python.packages import get_package_share_directory
 
-
-ROBOTS = [
-    {'name': 'robot1', 'x': -1.5, 'y': -1.5, 'yaw': 0.0},
-    {'name': 'robot2', 'x': 1.5, 'y': 1.5, 'yaw': math.pi},
-]
+from edgeai_rescue.utils.launch_utils import load_robots
 
 
 def generate_launch_description():
@@ -24,6 +20,8 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('edgeai_rescue')
     pkg_description = get_package_share_directory('edgeai_robot_description')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
+    
+    ROBOTS = load_robots()
 
     description = []
     for robot in ROBOTS:

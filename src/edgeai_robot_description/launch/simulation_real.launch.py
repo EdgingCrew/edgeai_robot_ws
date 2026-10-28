@@ -1,5 +1,6 @@
 import math
 import os
+from os import path
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -12,14 +13,11 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 import xacro
+import yaml
+
+from edgeai_rescue.utils.launch_utils import load_robots
 
 
-# Robots to spawn. Each gets its own namespace, including its own
-# /<name>/tf and /<name>/tf_static (Nav2 multi-robot convention).
-ROBOTS = [
-    {'name': 'robot1', 'x': -1.5, 'y': -1.5, 'yaw': 0.0},
-    {'name': 'robot2', 'x': 1.5, 'y': 1.5, 'yaw': math.pi},
-]
 
 # Nodes in a robot namespace use that robot's TF topics
 TF_REMAPPINGS = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
@@ -183,7 +181,10 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ]
     )
-
+    path = os.path.join(get_package_share_directory('edgeai_robot_description'), 'config', 'robots.yaml')
+    with open(path) as f:
+        ROBOTS = yaml.safe_load(f)['robots']
+        
     robots = [
         node
         for robot in ROBOTS
