@@ -30,7 +30,7 @@ def generate_launch_description():
         executable='planner_node',
         name='planner_node',
         output='screen',
-        parameters=[{
+        parameters=[os.path.join(pkg_share, 'config', 'rescue.yaml'), {
             'target_path_file': os.path.join(pkg_share, 'config', 'targets_example.yaml'),
             'period': 0.5,
             'robot_names': [r['name'] for r in ROBOTS],
