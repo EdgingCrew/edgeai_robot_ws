@@ -24,24 +24,18 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('edgeai_rescue')
     pkg_description = get_package_share_directory('edgeai_robot_description')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
+ 
+    node = Node(
+        package='edgeai_rescue',
+        executable='planner_node',
+        name='planner_node',
+        output='screen',
+        parameters=[{
+            'target_path_file': os.path.join(pkg_share, 'config', 'targets_example.yaml'),
+            'period': 0.5,
+            'robot_names': [r['name'] for r in ROBOTS],
+            'use_sim_time': True,
+        }],
+    )
 
-    description = []
-    for robot in ROBOTS:
-        name = robot['name']
-        description.append(Node(
-            package='edgeai_rescue',
-            executable='robot_controller_node',
-            name=f'{name}_controller',
-            namespace=name,
-            output='screen',
-            parameters=[{
-                'global_frame': 'map',
-                'base_frame': 'base_link',
-                'period': 0.5,
-                'use_sim_time': True,
-            }],
-            remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
-        ))
-
-
-    return LaunchDescription(description)
+    return LaunchDescription([node])

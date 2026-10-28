@@ -1,9 +1,11 @@
 # Example Task 1 target list for the edgeai_arena map (map frame, metres / radians).
-# Markers sit on the walls; yaw is the direction the marker faces (into the room).
+# Markers sit on the walls or on obstacle faces; yaw is the direction the marker faces (into the room).
 # Rescue zones are derived in targets.py (zone_offset in front of the marker).
 targets:
   - {id: T1, type: normal, x: -1.0, y: 2.5, yaw: 0.0}
   - {id: T2, type: normal, x: 1.5, y: 4.0, yaw: -1.5708}
   - {id: T3, type: normal, x: 4.0, y: 1.0, yaw: 3.1416}
   - {id: T4, type: normal, x: 1.0, y: -1.0, yaw: 1.5708}
+  - {id: T5, type: normal, x: 0.7, y: 2.25, yaw: -1.5708}   # obstacle_1, south face
+  - {id: T6, type: normal, x: 2.45, y: 2.0, yaw: 3.1416}    # obstacle_2, west face
   - {id: TC1, type: cooperative, x: 3.0, y: 4.0, yaw: -1.5708}

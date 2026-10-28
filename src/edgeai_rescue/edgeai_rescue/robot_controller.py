@@ -124,6 +124,7 @@ class RobotController(Node):
             elif outcome == 'failed':
                 return self.finish(goal_handle, False,'failed')
             self.stop()
+            self.get_logger().info(f"[RobotController-{self.robot}] Arrived at target {req.target_id}, dwelling for {req.dwell_time:.2f} seconds")
             feedback.state = "DWELLING"
             start = self.get_clock().now()
             elapsed = 0.0
@@ -135,6 +136,7 @@ class RobotController(Node):
                 elapsed = (self.get_clock().now() - start).nanoseconds / 1e9
                 feedback.dwell_elapsed = elapsed
                 goal_handle.publish_feedback(feedback)
+            self.get_logger().info(f"[RobotController-{self.robot}] Dwell complete for target {req.target_id}")
             return self.finish(goal_handle, True,'succeeded')
 
         finally:
