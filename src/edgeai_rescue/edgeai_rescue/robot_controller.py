@@ -2,7 +2,6 @@
 Robot controller node for the edgeAI robot.
 """
 import math
-from platform import node
 
 from action_msgs.msg import GoalStatus
 import rclpy
@@ -11,7 +10,7 @@ from rclpy.action import ActionServer,ActionClient, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import ExternalShutdownException
 from rclpy.task import Future
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Pose2D, PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose, ComputePathToPose
 from tf2_ros import Buffer, TransformException, TransformListener
 
@@ -29,6 +28,10 @@ class RobotController(Node):
         self.global_frame = self.declare_parameter('global_frame', 'map').value
         self.base_frame = self.declare_parameter('base_frame', 'base_link').value
         self.period = self.declare_parameter('period', 0.5).value
+        # Stuck watchdog: a goal whose distance has not dropped by stuck_progress [m] within
+        # stuck_timeout [s] is canceled and resent once, then reported as failed
+        self.stuck_timeout = float(self.declare_parameter('stuck_timeout', 10.0).value)
+        self.stuck_progress = float(self.declare_parameter('stuck_progress', 0.05).value)
         self.robot = self.get_namespace().strip("/") or 'robot'
 
         self.target_id = ''
@@ -39,6 +42,10 @@ class RobotController(Node):
         self.nav_client = ActionClient(self, NavigateToPose, "navigate_to_pose")
         self.path_client = ActionClient(self, ComputePathToPose, "compute_path_to_pose")
         self.vel_pub = self.create_publisher(Twist, "cmd_vel", 10)
+        # Map-frame pose for the rescue coordinator (dwell checks), from this robot's TF tree
+        self.pose_pub = self.create_publisher(Pose2D, "pose2d", 10)
+        self.create_timer(1.0 / float(self.declare_parameter('pose_rate', 10.0).value), self.publish_pose,
+                          callback_group=self.cb)
 
         self.rescue_server = ActionServer(self, ExecuteRescue, "execute_rescue", 
                                           execute_callback=self.execute_rescue_callback, goal_callback=self.rescue_goal_callback, 
@@ -65,6 +72,11 @@ class RobotController(Node):
         except TransformException:
             return None
         return t.transform.translation.x, t.transform.translation.y, quaternion_yaw(t.transform.rotation)
+
+    def publish_pose(self):
+        p = self.pose()
+        if p is not None:
+            self.pose_pub.publish(Pose2D(x=p[0], y=p[1], theta=p[2]))
 
     def stop(self):
         """Stop the robot by publishing a zero velocity command."""
@@ -145,7 +157,17 @@ class RobotController(Node):
 
 
     async def navigate(self, goal_handle, zone, feedback):
-        """Returns 'arrived', 'failed' or 'canceled'."""
+        """Returns 'arrived', 'failed' or 'canceled'. A stuck goal is resent once before it fails."""
+        for attempt in (1, 2):
+            outcome = await self.navigate_once(goal_handle, zone, feedback)
+            if outcome != 'stuck':
+                return outcome
+            self.get_logger().warn(f"[RobotController-{self.robot}] No progress towards ({zone.x:.2f}, {zone.y:.2f}) "
+                                   f"for {self.stuck_timeout:.0f} s (attempt {attempt})")
+        return 'failed'
+
+    async def navigate_once(self, goal_handle, zone, feedback):
+        """Returns 'arrived', 'failed', 'canceled' or 'stuck'."""
         if not self.nav_client.server_is_ready():
             return 'failed'
         goal = NavigateToPose.Goal()
@@ -154,16 +176,23 @@ class RobotController(Node):
         if not nav.accepted:
             return 'failed'
         result = nav.get_result_async()
+        best, best_time = math.inf, self.get_clock().now()
         while not result.done():
             if goal_handle.is_cancel_requested:
                 await nav.cancel_goal_async()
                 self.get_logger().info(f"[RobotController-{self.robot}] Goal canceled by client")
                 return 'canceled'
+            now = self.get_clock().now()
             p = self.pose()
             if p is None:
                 feedback.distance_remaining = math.inf
             else:
                 feedback.distance_remaining = math.hypot(zone.x - p[0], zone.y - p[1])
+                if feedback.distance_remaining < best - self.stuck_progress:
+                    best, best_time = feedback.distance_remaining, now
+            if (now - best_time).nanoseconds / 1e9 > self.stuck_timeout:
+                await nav.cancel_goal_async()
+                return 'stuck'
             goal_handle.publish_feedback(feedback)
             await self.sleep(self.period)
         return 'arrived' if result.result().status == GoalStatus.STATUS_SUCCEEDED else 'failed'

@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Summarize a rescue coordinator run log: summarize_run [logs/task2_<stamp>.jsonl] (default: newest in logs/)."""
+import glob
+import os
+import sys
+
+from edgeai_rescue.run_log import read_log, summarize
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    else:
+        logs = sorted(glob.glob(os.path.join('logs', 'task2_*.jsonl')), key=os.path.getmtime)
+        if not logs:
+            sys.exit('no logs/task2_*.jsonl here; pass the log file')
+        path = logs[-1]
+    print(path)
+    print('\n'.join(summarize(read_log(path))))

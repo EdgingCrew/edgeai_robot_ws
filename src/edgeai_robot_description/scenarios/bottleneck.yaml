@@ -1,0 +1,28 @@
+# Stress test for parking spots that block traffic: the only way from the west hall (start) to the
+# east hall is a 1.2 m corridor, and target K1's parking spot is in the middle of it, so a robot
+# dwelling on K1 cuts the east hall (C1, S2, S3) off for 10+ s. A plan that ignores this sends the
+# other robots into the corridor while K1 is being rescued. 3 robots, 6 targets.
+# See midterm.yaml for the scenario file format.
+world: bottleneck.sdf
+map: bottleneck.yaml
+targets: targets_bottleneck.yaml
+
+robots:
+  - {name: robot1, x: 0.5, y: 0.5, yaw: 1.5708}
+  - {name: robot2, x: 1.1, y: 0.5, yaw: 1.5708}
+  - {name: robot3, x: 1.7, y: 0.5, yaw: 1.5708}
+
+layout:
+  title: Bottleneck - two halls joined by one corridor with a target in it (scenario bottleneck)
+  size: [8.0, 5.0]
+  walls:
+    # West hall | corridor | east hall; corridor y in [1.95, 3.05] (1.1 m between wall faces).
+    # Above the corridor a north room, reachable from the west hall only (no detour to the east)
+    - {name: west_a, from: [3.0, 0.0], to: [3.0, 1.9]}
+    - {name: west_b, from: [3.0, 3.1], to: [3.0, 3.8]}   # door y in [3.8, 5.0] into the north room
+    - {name: east_a, from: [5.5, 0.0], to: [5.5, 1.9]}
+    - {name: east_b, from: [5.5, 3.1], to: [5.5, 5.0]}
+    - {name: corridor_s, from: [3.0, 1.9], to: [5.5, 1.9]}
+    - {name: corridor_n, from: [3.0, 3.1], to: [5.5, 3.1]}
+  obstacles:
+    - {name: O1, x: 1.6, y: 2.6, sx: 0.6, sy: 0.6}

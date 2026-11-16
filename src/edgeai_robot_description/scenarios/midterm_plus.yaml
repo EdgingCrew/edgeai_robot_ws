@@ -1,0 +1,22 @@
+# Midterm arena with 6 targets instead of 2 (4 normal + 2 cooperative), 2 robots.
+# Same walls and start area as `midterm`; the extra stands sit along the walls of each region,
+# so the scheduler has real choices (which robot takes which side of W1/W2, when to meet for C1/C2).
+# See midterm.yaml for the scenario file format.
+world: midterm_plus.sdf
+map: midterm_plus.yaml
+targets: targets_midterm_plus.yaml
+
+robots:
+  - {name: robot1, x: 0.45, y: 0.5, yaw: 1.5708}
+  - {name: robot2, x: 1.05, y: 0.5, yaw: 1.5708}
+
+layout:
+  title: Midterm Check arena with 6 targets (scenario midterm_plus)
+  size: [5.0, 5.0]
+  walls:
+    - {name: W1, from: [0.0, 3.1], to: [2.25, 3.1]}
+    - {name: W1b, from: [2.2, 3.1], to: [2.2, 3.6]}
+    - {name: W2, from: [3.4, 0.0], to: [3.4, 2.8]}
+  obstacles:
+    - {name: O2, x: 2.2, y: 2.0, sx: 0.6, sy: 1.0}
+    - {name: O3, x: 4.4, y: 3.6, sx: 0.8, sy: 0.6}

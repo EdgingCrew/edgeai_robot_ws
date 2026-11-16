@@ -9,13 +9,14 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from edgeai_rescue.utils.launch_utils import load_robots
+from edgeai_rescue.utils.launch_utils import load_scenario
 from ament_index_python.packages import get_package_share_directory
 
 
-# The packaged edgeai_arena map was recorded from robot1's spawn pose, so its
-# map frame sits at world (-1.5, -1.5) with no rotation: map = world + (1.5, 1.5).
-MAP_ORIGIN_IN_WORLD = (-1.5, -1.5)
+# Scenario maps are generated from their world files (scripts/make_world.py), so map frame =
+# world frame. The old SLAM-recorded edgeai_arena map (for worlds/empty.sdf) was recorded from
+# robot1's old spawn pose and needs (-1.5, -1.5) here instead.
+MAP_ORIGIN_IN_WORLD = (0.0, 0.0)
 
 
 def params_with_initial_pose(params_file, robot):
@@ -41,12 +42,13 @@ def generate_launch_description():
     pkg_description = get_package_share_directory('edgeai_robot_description')
     pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
 
-    ROBOTS = load_robots()
+    scenario = load_scenario()
+    ROBOTS = scenario['robots']
 
     map_arg = DeclareLaunchArgument(
         'map',
-        default_value=os.path.join(pkg_description, 'maps', 'edgeai_arena.yaml'),
-        description='Map YAML shared by all robots'
+        default_value=scenario['map'],
+        description=f'Map YAML shared by all robots (scenario {scenario["name"]})'
     )
 
     rviz_arg = DeclareLaunchArgument(

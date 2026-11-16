@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+from edgeai_rescue.rescue_coordinator import main
+
+if __name__ == '__main__':
+    main()

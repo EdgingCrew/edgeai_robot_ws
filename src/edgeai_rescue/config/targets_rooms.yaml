@@ -1,0 +1,11 @@
+# Scenario rooms (8 x 6 m, 3 robots). Format: see targets_midterm.yaml.
+targets:
+  - {id: S1, type: normal, x: 0.1, y: 4.5, yaw: 0.0, radius: 0.5, marker: 1}          # west room, west wall
+  - {id: S2, type: normal, x: 4.0, y: 5.9, yaw: -1.5708, radius: 0.5, marker: 2}      # middle room (no door to the hall)
+  - {id: C1, type: cooperative, x: 6.5, y: 5.9, yaw: -1.5708, radius: 0.7, marker: 3} # east room, north wall
+  - {id: S3, type: normal, x: 7.9, y: 3.7, yaw: 3.1416, radius: 0.5, marker: 4}       # east room, east wall
+  - {id: S4, type: normal, x: 7.9, y: 0.6, yaw: 3.1416, radius: 0.5, marker: 5}       # hall, SE corner
+  - {id: C2, type: cooperative, x: 3.0, y: 0.1, yaw: 1.5708, radius: 0.7, marker: 6}  # hall, south wall west of the divider
+  - {id: S5, type: normal, x: 4.1, y: 1.0, yaw: 0.0, radius: 0.5, marker: 7}          # hall, east face of the divider
+  - {id: S6, type: normal, x: 0.8, y: 3.1, yaw: 1.5708, radius: 0.5, marker: 8}       # west room, north face of H_west (clear of both doors)
+precedence: [[S4, C1]]   # Task 2B style rule: S4 must be rescued before C1 starts

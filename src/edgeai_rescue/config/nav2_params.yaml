@@ -96,7 +96,7 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.1
+      xy_goal_tolerance: 0.05  # S1 parking point is 0.40 m from the centre, rescue radius 0.5 (0.45 with margin)
       yaw_goal_tolerance: 3.14
     # Regulated Pure Pursuit
     # MPPI drove the robot backwards for some reason
@@ -172,7 +172,10 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_link
-      robot_radius: 0.24
+      # Planning radius > the 0.24 m footprint: keeps global paths out of gaps the controller
+      # cannot drive through, e.g. the 0.55 m gap between O2 and W1 in the midterm arena.
+      # The local costmap keeps 0.24 so robots can still reach the parking spots.
+      robot_radius: 0.28
       resolution: 0.05
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]

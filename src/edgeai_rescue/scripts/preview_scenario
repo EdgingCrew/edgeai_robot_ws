@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Offline preview of a scenario: the coordinator's first plan, without Gazebo or Nav2.
+
+    ros2 run edgeai_rescue preview_scenario [scenario] [--scheduler cpsat|greedy] [--out plan.png]
+
+Plans exactly like rescue_coordinator does at the start of a run (robots at their spawn poses,
+parameters from config/rescue_coordinator.yaml), prints each robot's route with planned arrival /
+dwell times, and draws the map with the inflated obstacles, stands, rescue discs, parking spots and
+the routes along the travel-time paths. scenario defaults to $EDGEAI_SCENARIO, else midterm.
+"""
+import argparse
+import dataclasses
+import math
+import os
+
+import yaml
+from ament_index_python import get_package_share_directory
+
+from edgeai_rescue.map_utils import cell_to_world, load_map
+from edgeai_rescue.mission import Mission, MissionParams, solve_problem
+from edgeai_rescue.scheduler.travel import TravelMatrix
+from edgeai_rescue.targets import COOPERATIVE, load_mission
+from edgeai_rescue.utils.launch_utils import load_scenario
+
+COLOURS = ['tab:blue', 'tab:orange', 'tab:green', 'tab:purple', 'tab:brown', 'tab:pink']
+
+
+def coordinator_params():
+    path = os.path.join(get_package_share_directory('edgeai_rescue'), 'config', 'rescue_coordinator.yaml')
+    with open(path) as f:
+        return yaml.safe_load(f)['rescue_coordinator']['ros__parameters']
+
+
+def first_plan(scenario, scheduler):
+    cfg = coordinator_params()
+    fields = {f.name for f in dataclasses.fields(MissionParams)}
+    params = MissionParams(**{k: v for k, v in cfg.items() if k in fields})
+    params.scheduler = scheduler or params.scheduler
+    targets, precedence = load_mission(scenario['targets'])
+    grid = load_map(scenario['map'])
+    travel = TravelMatrix(grid, cfg['robot_radius'], cfg['nominal_speed'], cfg['goal_overhead'])
+    log = []
+    names = [r['name'] for r in scenario['robots']]
+    mission = Mission(names, targets, precedence, travel, params, log.append)
+    mission.start(0.0)
+    mission.tick(0.0, {r['name']: (r['x'], r['y'], r['yaw']) for r in scenario['robots']})
+    problem = mission.build_problem(0.0)
+    mission.adopt(problem, solve_problem(problem), 0.0)
+    plan = next(r for r in log if r['event'] == 'plan')
+    return mission, travel, grid, targets, precedence, plan
+
+
+def path_between(travel, a, b):
+    """Shortest grid path a -> b (map-frame points) by walking down b's distance field from a."""
+    goal = travel.snap(*b)
+    field = travel.distance_field(goal)
+    r, c = travel.snap(*a)
+    if not math.isfinite(field[r, c]):
+        return [a, b]
+    pts = [a]
+    while (r, c) != goal:
+        r, c = min(((r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)
+                    if (dr or dc) and 0 <= r + dr < travel.h and 0 <= c + dc < travel.w),
+                   key=lambda rc: field[rc])
+        pts.append(cell_to_world(travel.map, r, c))
+    return pts + [b]
+
+
+def draw(scenario, mission, travel, grid, targets, plan, out):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    res, (x0, y0) = grid['resolution'], grid['origin']
+    h, w = grid['grid'].shape
+    extent = (x0, x0 + w * res, y0, y0 + h * res)
+    img = np.ones((h, w, 3))
+    img[travel.blocked] = (0.85, 0.85, 0.85)          # inflated by robot_radius: centre cannot go here
+    img[grid['grid'] < 0] = (0.6, 0.6, 0.6)
+    img[grid['grid'] >= 50] = (0.15, 0.15, 0.15)
+
+    fig, ax = plt.subplots(figsize=(1.6 * (extent[1] - extent[0]) + 2, 1.6 * (extent[3] - extent[2]) + 1))
+    ax.imshow(img, origin='lower', extent=extent, interpolation='nearest')
+    for t in targets:
+        coop = t.type == COOPERATIVE
+        ax.add_patch(plt.Circle((t.x, t.y), t.radius, fill=False, ls='--', lw=1,
+                                color='tab:red' if coop else 'tab:green'))
+        ax.annotate('', (t.x + 0.25 * math.cos(t.yaw), t.y + 0.25 * math.sin(t.yaw)), (t.x, t.y),
+                    arrowprops=dict(arrowstyle='->', color='k', lw=1))
+        ax.text(t.x, t.y + 0.12, t.id, ha='center', va='bottom', fontsize=9, weight='bold')
+        for zx, zy, _ in mission.tasks[t.id].zones:
+            ax.plot(zx, zy, 'o', ms=5, mfc='none', mec='k')
+
+    for i, robot in enumerate(scenario['robots']):
+        colour = COLOURS[i % len(COLOURS)]
+        ax.add_patch(plt.Circle((robot['x'], robot['y']), 0.24, color=colour, alpha=0.5))
+        ax.text(robot['x'], robot['y'], str(i + 1), ha='center', va='center', fontsize=8)
+        here = (robot['x'], robot['y'])
+        for n, v in enumerate(plan['routes'].get(robot['name'], []), 1):
+            zx, zy, _ = mission.tasks[v['task']].zones[v['slot']]
+            xs, ys = zip(*path_between(travel, here, (zx, zy)))
+            ax.plot(xs, ys, '-', color=colour, lw=2, alpha=0.8)
+            ax.text(zx + 0.08, zy - 0.08 - 0.12 * i, f'{n}', color=colour, fontsize=8, weight='bold')
+            here = (zx, zy)
+
+    ax.set_xlim(extent[0], extent[1])
+    ax.set_ylim(extent[2], extent[3])
+    ax.set_aspect('equal')
+    ax.set_title(f"{scenario['name']}: {plan['status']} plan, makespan {plan['makespan']:.1f} s "
+                 f"({len(targets)} targets, {len(scenario['robots'])} robots)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=110)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('scenario', nargs='?', help='scenario name or file (default: $EDGEAI_SCENARIO or midterm)')
+    ap.add_argument('--scheduler', choices=['cpsat', 'greedy'])
+    ap.add_argument('--out', help='PNG to write (default: <scenario>_plan.png); needs matplotlib')
+    args = ap.parse_args()
+
+    scenario = load_scenario(args.scenario)
+    mission, travel, grid, targets, precedence, plan = first_plan(scenario, args.scheduler)
+    print(f"scenario {scenario['name']}: {len(scenario['robots'])} robots, {len(targets)} targets, "
+          f"precedence {[list(p) for p in precedence] or 'none'}")
+    print(f"plan {plan['status']} ({plan['mode']}) in {plan['solve_time']:.2f} s, makespan {plan['makespan']:.1f} s")
+    for name, visits in plan['routes'].items():
+        steps = ', '.join(f"{v['task']}[{v['slot']}] {v['start']:.0f}-{v['end']:.0f}s" for v in visits) or 'idle'
+        print(f'  {name}: {steps}')
+    if plan['skipped']:
+        print(f"  skipped: {plan['skipped']}")
+    out = args.out or f"{scenario['name']}_plan.png"
+    try:
+        draw(scenario, mission, travel, grid, targets, plan, out)
+        print('wrote', out)
+    except ImportError:
+        print('matplotlib not available: no picture')
+
+
+if __name__ == '__main__':
+    main()

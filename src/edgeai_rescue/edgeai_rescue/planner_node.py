@@ -4,7 +4,6 @@ Planner node for EdgeAI competition.
 from dataclasses import dataclass
 import itertools
 import math
-from platform import node
 
 from action_msgs.msg import GoalStatus
 import rclpy

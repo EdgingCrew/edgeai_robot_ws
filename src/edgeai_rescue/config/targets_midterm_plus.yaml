@@ -1,0 +1,10 @@
+# Scenario midterm_plus: the midterm arena with 6 targets (S1, C1 as in the Midterm Check plus 4 more).
+# Format: see targets_midterm.yaml.
+targets:
+  - {id: S1, type: normal, x: 1.0, y: 4.1, yaw: -1.5708, radius: 0.5, marker: 1}       # NW room, as in the midterm
+  - {id: C1, type: cooperative, x: 4.1, y: 1.0, yaw: 1.5708, radius: 0.7, marker: 2}  # SE room, as in the midterm
+  - {id: S2, type: normal, x: 0.1, y: 2.0, yaw: 0.0, radius: 0.5, marker: 3}          # west wall, above the start area
+  - {id: S3, type: normal, x: 2.9, y: 0.1, yaw: 1.5708, radius: 0.5, marker: 4}       # south wall, west of W2
+  - {id: S4, type: normal, x: 0.1, y: 4.5, yaw: 0.0, radius: 0.5, marker: 5}          # NW room, west wall
+  - {id: C2, type: cooperative, x: 3.6, y: 4.9, yaw: -1.5708, radius: 0.7, marker: 6} # north wall, NE region
+precedence: []

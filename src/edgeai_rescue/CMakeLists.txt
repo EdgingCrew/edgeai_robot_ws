@@ -12,6 +12,9 @@ install(
   PROGRAMS
     scripts/robot_controller_node
     scripts/planner_node
+    scripts/rescue_coordinator
+    scripts/summarize_run
+    scripts/preview_scenario
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -22,9 +25,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-if(BUILD_TESTING AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test_allocation.py)
+# Plain pytest, no ROS needed: pixi run python -m pytest src/edgeai_rescue
+if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
-  ament_add_pytest_test(test_allocation test/test_allocation.py)
+  ament_add_pytest_test(test_edgeai_rescue test
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    TIMEOUT 300)
 endif()
 
 ament_package()

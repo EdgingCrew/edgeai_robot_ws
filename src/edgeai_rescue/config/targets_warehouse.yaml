@@ -1,0 +1,13 @@
+# Scenario warehouse (8 x 8 m, 4 robots). Format: see targets_midterm.yaml.
+targets:
+  - {id: C1, type: cooperative, x: 4.0, y: 7.9, yaw: -1.5708, radius: 0.7, marker: 1} # north wall, centre
+  - {id: S1, type: normal, x: 0.1, y: 7.0, yaw: 0.0, radius: 0.5, marker: 2}          # NW, west wall
+  - {id: S2, type: normal, x: 7.9, y: 7.2, yaw: 3.1416, radius: 0.5, marker: 3}       # NE, east wall
+  - {id: C2, type: cooperative, x: 7.9, y: 1.0, yaw: 3.1416, radius: 0.7, marker: 4}  # SE, east wall
+  - {id: S3, type: normal, x: 2.3, y: 2.0, yaw: -1.5708, radius: 0.5, marker: 5}      # south face of shelf_w1
+  - {id: S4, type: normal, x: 5.7, y: 3.7, yaw: -1.5708, radius: 0.5, marker: 6}      # aisle 1, south face of shelf_e2
+  - {id: C3, type: cooperative, x: 2.3, y: 5.4, yaw: -1.5708, radius: 0.7, marker: 7} # aisle 2, south face of shelf_w3
+  - {id: S5, type: normal, x: 4.55, y: 4.0, yaw: 3.1416, radius: 0.5, marker: 8}      # centre gap, west end of shelf_e2
+  - {id: S6, type: normal, x: 6.0, y: 7.9, yaw: -1.5708, radius: 0.5, marker: 9}      # north wall, east
+  - {id: S7, type: normal, x: 7.9, y: 4.8, yaw: 3.1416, radius: 0.5, marker: 10}      # east wall, middle
+precedence: []

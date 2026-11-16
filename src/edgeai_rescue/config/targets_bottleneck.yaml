@@ -1,0 +1,9 @@
+# Scenario bottleneck (8 x 5 m, 3 robots). Format: see targets_midterm.yaml.
+targets:
+  - {id: K1, type: normal, x: 4.25, y: 1.95, yaw: 1.5708, radius: 0.5, marker: 1}     # in the corridor: parking spot blocks it
+  - {id: C1, type: cooperative, x: 7.9, y: 2.5, yaw: 3.1416, radius: 0.7, marker: 2}  # east hall, east wall
+  - {id: S2, type: normal, x: 6.5, y: 0.1, yaw: 1.5708, radius: 0.5, marker: 3}       # east hall, south wall
+  - {id: S3, type: normal, x: 6.5, y: 4.9, yaw: -1.5708, radius: 0.5, marker: 4}      # east hall, north wall
+  - {id: S4, type: normal, x: 4.25, y: 4.9, yaw: -1.5708, radius: 0.5, marker: 5}     # north room (via the west hall)
+  - {id: S5, type: normal, x: 0.1, y: 4.0, yaw: 0.0, radius: 0.5, marker: 6}          # west hall, west wall
+precedence: []

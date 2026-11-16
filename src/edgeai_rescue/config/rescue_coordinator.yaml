@@ -1,0 +1,50 @@
+# Rescue coordinator parameters (CP-SAT allocation for Task 2). Midterm values; most are TBD for the
+# final rulebook. Robot names, the target file and the map come from rescue_coordinator.launch.py.
+rescue_coordinator:
+  ros__parameters:
+    # Travel-time matrix (Dijkstra on the saved map)
+    robot_radius: 0.28        # [m] obstacle inflation, same as Nav2's global costmap robot_radius
+    nominal_speed: 0.35       # [m/s] average speed through Nav2 incl. turns (sim legs: 0.33-0.40); recalibrate on the real robots
+    goal_overhead: 1.0        # [s] added per leg for acceleration and final alignment
+
+    # Rescue rules
+    dwell_normal: 10.0        # [s] continuous time inside the radius (midterm: 10 s)
+    dwell_coop: 10.0          # [s] both robots inside simultaneously (midterm: 10 s)
+    radius_margin: 0.05       # [m] counts as inside at distance <= radius - margin (localisation slack)
+
+    # Parking points in front of the marker (targets.zone_points)
+    normal_offset: 0.40       # [m] S1: 0.40 m in front of the stand (radius 0.5); closer and Nav2 sees the robot inside the stand's inflation
+    coop_offset: 0.45         # [m] C1: 0.45 m in front ...
+    coop_spacing: 0.6         # [m] ... and 0.6 m apart side by side (0.54 m from the centre, radius 0.7)
+
+    # Planning
+    scheduler: cpsat          # cpsat | greedy (greedy = the scheduler's earliest-finish heuristic)
+    mode: makespan            # makespan | max_rescues (makespan switches automatically when time runs short)
+    run_time_limit: 420.0     # [s] mission time limit (midterm: 13 min shared with Part 1, ~7 min suggested)
+    solver_time_limit: 3.0    # [s] first plan
+    replan_time_limit: 1.0    # [s] replans
+    workers: 8                # CP-SAT search workers
+
+    # Robots parked in corridors / doorways (TravelMatrix.blocking): legs through an occupied spot are
+    # scheduled around its occupation (arrival .. dwell end + block_margin, or for good after the last visit)
+    blocking: true
+    parked_radius: 0.24       # [m] parked robot's radius (Nav2 local costmap robot_radius)
+    block_detour: 1.5         # [m] a leg counts as cut when the way around the parked robot is this much longer
+    block_margin: 2.0         # [s] extra occupation after the dwell (the robot still has to drive off)
+
+    # Nav2 can stop up to goal tolerance + one map cell short of the parking point, which can be outside
+    # radius - radius_margin; each resend aims this much deeper towards the target, up to max_goal_shift
+    resend_shift: 0.03        # [m]
+    max_goal_shift: 0.08      # [m]
+
+    # Execution and replanning
+    late_threshold: 5.0       # [s] behind the planned arrival before a replan
+    switch_margin: 2.0        # [s] a replan is adopted only if this much better (or the old plan broke)
+    min_replan_interval: 2.0  # [s] between non-urgent replans
+    max_failures: 2           # failed visits before a target is dropped
+    max_resends: 3            # goal re-sends when a robot is outside its radius after arriving
+    outside_grace: 1.0        # [s] outside the radius before a robot at its zone is sent back
+    distance_log_period: 1.0  # [s] robot-to-target distance records in the log
+
+    log_dir: logs             # JSONL run logs, relative to the working directory
+    autostart: false          # true = start as soon as all robot poses are known (else call /start_rescue)

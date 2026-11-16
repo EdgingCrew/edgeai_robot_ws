@@ -16,9 +16,11 @@ install(
     launch
     urdf
     worlds
+    models
     rviz
     config
     maps
+    scenarios
   DESTINATION share/${PROJECT_NAME}
 )
 

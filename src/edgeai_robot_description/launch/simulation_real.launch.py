@@ -3,19 +3,18 @@ import os
 from os import path
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import AppendEnvironmentVariable, DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 
 from launch_ros.actions import Node
 
 from ament_index_python.packages import get_package_share_directory
 
 import xacro
-import yaml
 
-from edgeai_rescue.utils.launch_utils import load_robots
+from edgeai_rescue.utils.launch_utils import load_scenario
 
 
 
@@ -137,11 +136,19 @@ def generate_launch_description():
         'edgeai_robot_real.urdf.xacro'
     )
 
-    # Reuse the existing Gazebo world
-    world_file = os.path.join(
-        pkg_share,
-        'worlds',
-        'empty.sdf'
+    # Robots and world come from the active scenario (EDGEAI_SCENARIO, default midterm)
+    scenario = load_scenario()
+    world_arg = DeclareLaunchArgument(
+        'world',
+        default_value=scenario['world'],
+        description=f'World file in edgeai_robot_description/worlds (scenario {scenario["name"]})'
+    )
+    world_file = PathJoinSubstitution([pkg_share, 'worlds', LaunchConfiguration('world')])
+
+    # model://aruco_stand_N lives in <share>/models
+    model_path = AppendEnvironmentVariable(
+        'GZ_SIM_RESOURCE_PATH',
+        os.path.join(pkg_share, 'models')
     )
 
     rviz_launch_file = os.path.join(
@@ -156,6 +163,14 @@ def generate_launch_description():
         description='Open one RViz window per robot'
     )
 
+    headless_arg = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run the Gazebo server only (no GUI); sensors still render offscreen'
+    )
+    server_only = PythonExpression(
+        ["'-s --headless-rendering ' if '", LaunchConfiguration('headless'), "' == 'true' else ''"])
+
     # Start Gazebo Harmonic
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -166,7 +181,7 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'gz_args': f'-r {world_file}'
+            'gz_args': ['-r ', server_only, world_file]
         }.items()
     )
 
@@ -181,18 +196,17 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ]
     )
-    path = os.path.join(get_package_share_directory('edgeai_robot_description'), 'config', 'robots.yaml')
-    with open(path) as f:
-        ROBOTS = yaml.safe_load(f)['robots']
-        
     robots = [
         node
-        for robot in ROBOTS
+        for robot in scenario['robots']
         for node in robot_nodes(robot, xacro_file, rviz_launch_file)
     ]
 
     return LaunchDescription([
         rviz_arg,
+        world_arg,
+        headless_arg,
+        model_path,
         gazebo,
         bridge,
         *robots,

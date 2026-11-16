@@ -1,0 +1,29 @@
+# KTH EdgeAI Midterm Check arena (Task Description, Figure 1 and Section 3): 2 robots, S1 + C1.
+#
+# A scenario ties together everything that has to match between the simulator, Nav2, the robot
+# controllers and the rescue coordinator. Select one for every launch file with
+#     export EDGEAI_SCENARIO=<name>        (default: midterm)
+# World frame = map frame (the generated map has no offset); all poses below are in it.
+#
+# world / map / targets: file names in edgeai_robot_description/worlds, edgeai_robot_description/maps
+# and edgeai_rescue/config. world and map are generated from `layout` + the targets' `marker`
+# fields by scripts/make_world.py; after editing the layout or the target positions, run
+#     pixi run python src/edgeai_robot_description/scripts/make_world.py midterm
+world: midterm_arena.sdf
+map: midterm_arena.yaml
+targets: targets_midterm.yaml
+
+# Spawn poses (also AMCL's initial pose): the lower-left start area x in [0, 1.4], y in [0, 1.0]
+robots:
+  - {name: robot1, x: 0.45, y: 0.5, yaw: 1.5708}
+  - {name: robot2, x: 1.05, y: 0.5, yaw: 1.5708}
+
+layout:
+  size: [5.0, 5.0]   # inner area [0, 5] x [0, 5]; 0.1 m boundary walls are added outside it
+  walls:             # 0.1 m thick, 0.5 m tall boxes spanning exactly from -> to (centre line)
+    - {name: W1, from: [0.0, 3.1], to: [2.25, 3.1]}
+    - {name: W1b, from: [2.2, 3.1], to: [2.2, 3.6]}
+    - {name: W2, from: [3.4, 0.0], to: [3.4, 2.8]}
+  obstacles:         # 0.4 m tall boxes: centre x, y and size sx, sy
+    - {name: O2, x: 2.2, y: 2.0, sx: 0.6, sy: 1.0}
+    - {name: O3, x: 4.4, y: 3.6, sx: 0.8, sy: 0.6}

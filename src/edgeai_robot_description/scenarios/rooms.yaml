@@ -1,0 +1,31 @@
+# Office-like 8 x 6 m floor: a lower hall split by a half wall, three rooms on top connected to the
+# hall and to each other by 1.2 m doors. 3 robots, 8 targets (6 normal + 2 cooperative) and one
+# ordering rule (S4 before C1). See midterm.yaml for the scenario file format.
+world: rooms.sdf
+map: rooms.yaml
+targets: targets_rooms.yaml
+
+robots:
+  - {name: robot1, x: 0.5, y: 0.5, yaw: 1.5708}
+  - {name: robot2, x: 1.1, y: 0.5, yaw: 1.5708}
+  - {name: robot3, x: 1.7, y: 0.5, yaw: 1.5708}
+
+layout:
+  title: Rooms - 8 x 6 m hall with three rooms (scenario rooms)
+  size: [8.0, 6.0]
+  walls:
+    # Hall / rooms wall at y = 3, doors x in [1.6, 2.8] (west room) and [5.2, 6.4] (east room)
+    - {name: H_west, from: [0.0, 3.0], to: [1.6, 3.0]}
+    - {name: H_mid, from: [2.8, 3.0], to: [5.2, 3.0]}
+    - {name: H_east, from: [6.4, 3.0], to: [8.0, 3.0]}
+    # West | middle room at x = 3, door y in [4.4, 5.6]
+    - {name: V_west_a, from: [3.0, 3.0], to: [3.0, 4.4]}
+    - {name: V_west_b, from: [3.0, 5.6], to: [3.0, 6.0]}
+    # Middle | east room at x = 5, door y in [4.0, 5.2]
+    - {name: V_east_a, from: [5.0, 3.0], to: [5.0, 4.0]}
+    - {name: V_east_b, from: [5.0, 5.2], to: [5.0, 6.0]}
+    # Half wall splitting the hall, open above y = 1.8
+    - {name: divider, from: [4.0, 0.0], to: [4.0, 1.8]}
+  obstacles:
+    - {name: O1, x: 6.2, y: 1.4, sx: 0.8, sy: 0.8}
+    - {name: O2, x: 2.0, y: 1.6, sx: 0.6, sy: 0.6}

@@ -1,0 +1,23 @@
+# Open 8 x 8 m warehouse with a 2 x 3 grid of shelf rows (1.2 m aisles), 4 robots and 10 targets
+# (7 normal + 3 cooperative). See midterm.yaml for the scenario file format.
+world: warehouse.sdf
+map: warehouse.yaml
+targets: targets_warehouse.yaml
+
+robots:
+  - {name: robot1, x: 0.5, y: 0.5, yaw: 1.5708}
+  - {name: robot2, x: 1.1, y: 0.5, yaw: 1.5708}
+  - {name: robot3, x: 1.7, y: 0.5, yaw: 1.5708}
+  - {name: robot4, x: 2.3, y: 0.5, yaw: 1.5708}
+
+layout:
+  title: Warehouse - 8 x 8 m with shelf rows (scenario warehouse)
+  size: [8.0, 8.0]
+  walls: []
+  obstacles:   # shelves 2.2 x 0.5: columns x in [1.2, 3.4] and [4.6, 6.8], rows at y = 2.3, 4.0, 5.7
+    - {name: shelf_w1, x: 2.3, y: 2.3, sx: 2.2, sy: 0.5}
+    - {name: shelf_w2, x: 2.3, y: 4.0, sx: 2.2, sy: 0.5}
+    - {name: shelf_w3, x: 2.3, y: 5.7, sx: 2.2, sy: 0.5}
+    - {name: shelf_e1, x: 5.7, y: 2.3, sx: 2.2, sy: 0.5}
+    - {name: shelf_e2, x: 5.7, y: 4.0, sx: 2.2, sy: 0.5}
+    - {name: shelf_e3, x: 5.7, y: 5.7, sx: 2.2, sy: 0.5}

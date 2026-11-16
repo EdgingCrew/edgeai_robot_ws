@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <!-- Origin: ground point beneath the stand (target reference position). Marker faces +x. -->
+  <model name="aruco_stand_7">
+    <static>true</static>
+    <link name="link">
+      <!-- Base plate -->
+      <collision name="base_collision">
+        <pose>0 0 0.01 0 0 0</pose>
+        <geometry><box><size>0.08 0.08 0.02</size></box></geometry>
+      </collision>
+      <visual name="base_visual">
+        <pose>0 0 0.01 0 0 0</pose>
+        <geometry><box><size>0.08 0.08 0.02</size></box></geometry>
+        <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+      </visual>
+      <!-- Pole (0.05 m square so the lidar sees it) -->
+      <collision name="pole_collision">
+        <pose>0 0 0.24 0 0 0</pose>
+        <geometry><box><size>0.05 0.05 0.44</size></box></geometry>
+      </collision>
+      <visual name="pole_visual">
+        <pose>0 0 0.24 0 0 0</pose>
+        <geometry><box><size>0.05 0.05 0.44</size></box></geometry>
+        <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+      </visual>
+      <!-- White backing board, 0.22 m square, centre 0.35 m above the floor -->
+      <collision name="board_collision">
+        <pose>0.0275 0 0.35 0 0 0</pose>
+        <geometry><box><size>0.005 0.22 0.22</size></box></geometry>
+      </collision>
+      <visual name="board_visual">
+        <pose>0.0275 0 0.35 0 0 0</pose>
+        <geometry><box><size>0.005 0.22 0.22</size></box></geometry>
+        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material>
+      </visual>
+      <!-- Marker texture (0.16 m marker + white margin) on a thin plate in front of the board -->
+      <visual name="marker_visual">
+        <pose>0.0305 0 0.35 0 0 0</pose>
+        <geometry><box><size>0.001 0.22 0.22</size></box></geometry>
+        <material>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0 0 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>model://aruco_stand_7/materials/textures/aruco_7.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>1.0</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

@@ -8,8 +8,9 @@
   <version>0.0.0</version>
 
   <description>
-    Task 2 multi-robot rescue baseline: a centralized greedy task planner and
-    per-robot controllers that execute rescues through Nav2.
+    Task 2 multi-robot rescue: a central rescue coordinator (CP-SAT allocation, dwell and
+    cooperative-rescue checking, replanning, JSONL logging), per-robot controllers that drive
+    through Nav2, and the older greedy planner_node.
   </description>
 
   <maintainer email="kahounjosef3@gmail.com">kahoujo1</maintainer>
@@ -28,6 +29,11 @@
   <exec_depend>edgeai_robot_description</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <!-- ortools (CP-SAT) comes from PyPI via pixi.toml; there is no rosdep key that matches its pin -->
 
   <test_depend>ament_cmake_pytest</test_depend>
 

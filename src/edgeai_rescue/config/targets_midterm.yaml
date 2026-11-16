@@ -1,0 +1,8 @@
+# Midterm Check targets (Task Description, Section 3), map frame = PDF frame.
+# x, y = target reference position (ground point beneath the stand), yaw = direction the marker
+# faces, radius = rescue radius. marker = ArUco DICT_4X4_50 id of the stand placed in the
+# simulated world (scripts/make_world.py); the coordinator ignores it.
+targets:
+  - {id: S1, type: normal, x: 1.0, y: 4.1, yaw: -1.5708, radius: 0.5, marker: 1}
+  - {id: C1, type: cooperative, x: 4.1, y: 1.0, yaw: 1.5708, radius: 0.7, marker: 2}
+precedence: []

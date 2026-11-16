@@ -40,3 +40,8 @@ RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 ROS_AUTOMATIC_DISCOVERY_RANGE = "SUBNET"
 ROS_DOMAIN_ID = "0"
 COLCON_DEFAULTS_FILE = "$PIXI_PROJECT_ROOT/colcon_defaults.yaml"
+
+[pypi-dependencies]
+# CP-SAT scheduler. From PyPI because conda-forge ortools pins an older libprotobuf than
+# ros2-distro-mutex; 9.15+ wants python protobuf 6.33, ROS pins 6.31.1.
+ortools = ">=9.12, <9.15"

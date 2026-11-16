@@ -1,0 +1,4 @@
+# Workspace-local colcon defaults; overrides ~/.colcon/defaults.yaml so the
+# pixi Python is used instead of the system one.
+build:
+  symlink-install: true
