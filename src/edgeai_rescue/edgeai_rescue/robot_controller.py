@@ -28,8 +28,9 @@ class RobotController(Node):
         self.global_frame = self.declare_parameter('global_frame', 'map').value
         self.base_frame = self.declare_parameter('base_frame', 'base_link').value
         self.period = self.declare_parameter('period', 0.5).value
-        # Stuck watchdog: a goal whose distance has not dropped by stuck_progress [m] within
-        # stuck_timeout [s] is canceled and resent once, then reported as failed
+        # Stuck watchdog: a goal whose distance (straight line or Nav2's remaining path length) has
+        # not dropped by stuck_progress [m] within stuck_timeout [s] is canceled and resent once,
+        # then reported as failed
         self.stuck_timeout = float(self.declare_parameter('stuck_timeout', 10.0).value)
         self.stuck_progress = float(self.declare_parameter('stuck_progress', 0.05).value)
         self.robot = self.get_namespace().strip("/") or 'robot'
@@ -172,11 +173,19 @@ class RobotController(Node):
             return 'failed'
         goal = NavigateToPose.Goal()
         goal.pose = self.pose_stamped(zone)
-        nav = await self.nav_client.send_goal_async(goal)
+        # Nav2's remaining path length: falls while the robot follows its path, also on detours
+        # that lead away from the goal first (e.g. out of a room through a door behind the robot)
+        path_left = [math.inf]
+
+        def on_nav_feedback(msg):
+            if msg.feedback.distance_remaining > 0.0:
+                path_left[0] = msg.feedback.distance_remaining
+        nav = await self.nav_client.send_goal_async(goal, feedback_callback=on_nav_feedback)
         if not nav.accepted:
             return 'failed'
         result = nav.get_result_async()
-        best, best_time = math.inf, self.get_clock().now()
+        # Progress = the straight-line distance or the path length left dropped by stuck_progress
+        best, best_path, best_time = math.inf, math.inf, self.get_clock().now()
         while not result.done():
             if goal_handle.is_cancel_requested:
                 await nav.cancel_goal_async()
@@ -190,6 +199,8 @@ class RobotController(Node):
                 feedback.distance_remaining = math.hypot(zone.x - p[0], zone.y - p[1])
                 if feedback.distance_remaining < best - self.stuck_progress:
                     best, best_time = feedback.distance_remaining, now
+            if path_left[0] < best_path - self.stuck_progress:
+                best_path, best_time = path_left[0], now
             if (now - best_time).nanoseconds / 1e9 > self.stuck_timeout:
                 await nav.cancel_goal_async()
                 return 'stuck'

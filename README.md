@@ -123,6 +123,15 @@ Node(..., namespace='robot1',
      remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')])
 ```
 
+### Robots in each other's costmaps
+
+The lidar scans about 15.5 cm above the floor, above the ~9 cm tall robot bodies. In a scan, another robot is therefore only its 7 cm lidar housing, and Nav2 would drive into a parked robot (seen at the cooperative targets). `navigation.launch.py` starts a `robot_overlay` node for this. From every robot's `/<name>/pose2d` it publishes two map-sized `OccupancyGrid`s per robot, with the *other* robots drawn as discs of `body_radius` (0.24 m):
+
+- `/<name>/other_robots`: every other robot, loaded by the local costmap;
+- `/<name>/parked_robots`: only the other robots standing still (moved less than 5 cm in 1 s: parked, dwelling, waiting), loaded by the global costmap. A moving robot would close a corridor it drives through, and the robot behind it could not plan to follow.
+
+Both costmaps load the grid as `robots_layer`, a second static layer (`config/nav2_params.yaml`), so the inflation layer keeps the robots apart like walls. `pose2d` is published by `robot_controller`, so robots are drawn only while the controllers run. A robot gets its grids once its costmaps are up: a static layer that receives its first map while the costmap is still configuring crashed a Nav2 container once. Add the topics as Map displays in RViz to see them.
+
 ## ROS commands in another terminal
 
 In each additional terminal, enter the cloned repository and activate its environment:
@@ -154,6 +163,9 @@ Per-robot topics are under the robot's namespace; `<name>` is `robot1` or `robot
 | `/<name>/tf_static` | `tf2_msgs/msg/TFMessage` | Fixed robot and sensor transforms |
 | `/clock` | `rosgraph_msgs/msg/Clock` | Simulation time |
 | `/<name>/map` | `nav_msgs/msg/OccupancyGrid` | Occupancy map when SLAM toolbox is running for that robot |
+| `/<name>/pose2d` | `geometry_msgs/msg/Pose2D` | Map-frame pose, from `robot_controller` |
+| `/<name>/other_robots` | `nav_msgs/msg/OccupancyGrid` | The other robots' bodies, local costmap `robots_layer` (`robot_overlay`) |
+| `/<name>/parked_robots` | `nav_msgs/msg/OccupancyGrid` | The other robots standing still, global costmap `robots_layer` |
 
 The saved RViz configuration uses `odom` as its fixed frame. Its topic names are relative, so each RViz window shows the robot whose namespace it runs in. To inspect available topics:
 
@@ -240,10 +252,11 @@ src/edgeai_rescue/
   edgeai_rescue/map_utils.py         Map loading, inflation, A*
   edgeai_rescue/planner_node.py      Previous greedy task planner (not started by tmux)
   edgeai_rescue/robot_controller.py  Per-robot navigation (+ stuck watchdog), publishes pose2d
+  edgeai_rescue/robot_overlay.py     Draws the robots into each other's costmaps (other/parked_robots)
   edgeai_rescue/targets.py           Target list loading, parking points, ordering-rule validation
   scripts/summarize_run              Summary of a coordinator run log
   scripts/preview_scenario           Offline first plan of a scenario, printed and drawn
-  test/                              pytest unit tests (scheduler, travel, targets, mission, scenarios)
+  test/                              pytest unit tests (scheduler, travel, targets, mission, scenarios, overlay)
   launch/                            Contains the needed launch files
   config/                            Nav2, coordinator, target lists
 ```

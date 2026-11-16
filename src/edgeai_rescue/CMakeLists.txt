@@ -13,6 +13,7 @@ install(
     scripts/robot_controller_node
     scripts/planner_node
     scripts/rescue_coordinator
+    scripts/robot_overlay
     scripts/summarize_run
     scripts/preview_scenario
   DESTINATION lib/${PROJECT_NAME}

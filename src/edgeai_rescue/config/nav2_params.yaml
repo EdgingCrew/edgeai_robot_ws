@@ -135,7 +135,14 @@ local_costmap:
       height: 3
       resolution: 0.05
       robot_radius: 0.24
-      plugins: ["voxel_layer", "inflation_layer"]
+      # robots_layer: the other robots' bodies (robot_overlay node). The lidars scan above the
+      # robot bodies, so voxel_layer alone sees another robot only as its 7 cm lidar housing.
+      plugins: ["robots_layer", "voxel_layer", "inflation_layer"]
+      use_maximum: true  # static layers add to the costmap instead of overwriting it
+      robots_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: <robot_namespace>/other_robots
+        map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
@@ -178,7 +185,8 @@ global_costmap:
       robot_radius: 0.28
       resolution: 0.05
       track_unknown_space: true
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      plugins: ["static_layer", "robots_layer", "obstacle_layer", "inflation_layer"]
+      use_maximum: true  # robots_layer adds the other robots to the map instead of replacing it
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -195,6 +203,10 @@ global_costmap:
           obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      robots_layer:  # only the other robots that stand still: a moving one would close a corridor
+        plugin: "nav2_costmap_2d::StaticLayer"  # it drives through for the robot following it
+        map_topic: <robot_namespace>/parked_robots
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"

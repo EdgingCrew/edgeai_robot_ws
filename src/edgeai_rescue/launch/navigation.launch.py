@@ -9,6 +9,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 from edgeai_rescue.utils.launch_utils import load_scenario
 from ament_index_python.packages import get_package_share_directory
 
@@ -60,6 +61,20 @@ def generate_launch_description():
     params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
 
     actions = [map_arg, rviz_arg]
+
+    # Draws every robot into the other robots' costmaps (robots_layer in nav2_params.yaml): the
+    # lidars scan above the robot bodies, so Nav2 would otherwise drive into a parked robot.
+    actions.append(Node(
+        package='edgeai_rescue',
+        executable='robot_overlay',
+        name='robot_overlay',
+        output='screen',
+        parameters=[{
+            'robots': [robot['name'] for robot in ROBOTS],
+            'map_yaml': LaunchConfiguration('map'),
+            'use_sim_time': True,
+        }],
+    ))
     for robot in ROBOTS:
         name = robot['name']
 
