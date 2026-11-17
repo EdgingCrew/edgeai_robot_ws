@@ -118,6 +118,47 @@ This writes `maps/my_map.yaml` and its associated map image. Choose a new basena
 
 The package also contains `src/edgeai_robot_description/maps/edgeai_arena.yaml` and its map image. Saving `maps/my_map` does not overwrite the packaged map.
 
+## Two robots: map merging and exploration
+
+`launch/multi_robot_simulation.launch.py` starts the same world with two robots, `robot1` at (-1.5, -1.5) and `robot2` at (1.5, 1.5). Each robot runs in its own namespace (`/robot1/scan`, `/robot1/cmd_vel`, ..., its own TF tree on `/robot1/tf`) with its own SLAM toolbox and Nav2. Map merging (`multirobot_map_merge`) and frontier exploration (`explore_lite`) come from the [m-explore-jazzy](https://github.com/EdgingCrew/m-explore-jazzy) workspace and run in its Pixi environment; both environments use CycloneDDS on domain 0, so the nodes see each other.
+
+By default (`use_merged_map:=true`) each robot's Nav2 global costmap uses the merged map from map_merge, so a robot can plan into areas only the other robot has seen, and the robots explore the merged map together, spreading out to different frontiers. Start map_merge before or right after the simulation: the global costmaps wait for the `world -> map` transform it publishes, and until then print `Timed out waiting for transform from base_footprint to world ... frame does not exist`. With `use_merged_map:=false` each robot plans on its own SLAM map.
+
+The launch file opens one RViz per robot (`rviz/multi_robot.rviz`, disable with `rviz:=false`): RViz shows one TF tree, and each robot has its own. Both use the fixed frame `world`, so they show the robots only once map_merge runs: the merged map, that robot's model, scan, global costmap, plan and explore_lite frontiers. The **2D Goal Pose** tool sends a goal to that robot.
+
+Terminal 1, simulation (this repository):
+
+```bash
+pixi shell
+source install/setup.bash
+ros2 launch edgeai_robot_description multi_robot_simulation.launch.py
+```
+
+Terminal 2, map merging (m-explore-jazzy repository, `pixi shell`), with the robots' start poses from `config/map_merge_params.yaml`:
+
+```bash
+ros2 launch multirobot_map_merge map_merge.launch.py \
+  params_file:=/path/to/edgeai_robot_ws/src/edgeai_robot_description/config/map_merge_params.yaml
+```
+
+Terminals 3 and 4, exploration (m-explore-jazzy repository, `pixi shell`):
+
+```bash
+ros2 launch explore_lite explore.launch.py namespace:=robot1 \
+  params_file:=$(ros2 pkg prefix explore_lite)/share/explore_lite/config/params_multirobot.yaml
+ros2 launch explore_lite explore.launch.py namespace:=robot2 \
+  params_file:=$(ros2 pkg prefix explore_lite)/share/explore_lite/config/params_multirobot.yaml
+```
+
+The merged map is `/map` in frame `world` (robot1's map frame); `rviz2 -d map_merge/launch/map_merge.rviz` from m-explore-jazzy shows it. Each robot also gets `/robotN/merged_map`, the merged map with its own map on top, which its costmap and explore_lite use.
+
+If you change the spawn poses in the launch file (`ROBOTS`), change `init_pose_*` in `config/map_merge_params.yaml` to match: they are robot2's start pose relative to robot1's.
+
+Notes:
+- The launch file runs each robot's Nav2 servers in one process (`use_composition`). With one process per server, two robots exceed CycloneDDS's participant limit when it cannot use multicast discovery (e.g. on Wi-Fi): nodes die with "Failed to find a free participant index".
+- Only one `/clock` is bridged for the world; a bridge per robot would publish it twice and step simulation time backwards.
+- Two RGB-D cameras and two GPU lidars are heavy: the simulation ran at about 0.3x real time in a test. Use `headless:=true` to skip the Gazebo GUI.
+
 ## Known limitation: odometry drift during collisions
 
 In the reported movement tests, normal straight driving stayed synchronized between Gazebo and RViz, and an explicit stop command stopped the robot. When the robot contacted a wall or obstacle, its physical motion in Gazebo stopped while `/odom` continued changing and the robot in RViz continued moving.

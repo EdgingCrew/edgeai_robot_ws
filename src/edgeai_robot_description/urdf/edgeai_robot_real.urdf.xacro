@@ -3,6 +3,12 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro"
        name="edgeai_robot_real">
 
+  <!-- Gazebo topic namespace, for several robots in one world (e.g. namespace:=robot1
+       gives /robot1/scan, /robot1/cmd_vel, ...). Empty: the single-robot topics. -->
+  <xacro:arg name="namespace" default=""/>
+  <xacro:property name="gz_ns" value="$(arg namespace)"/>
+  <xacro:property name="gz_prefix" value="${'/' + gz_ns if gz_ns else ''}"/>
+
   <!-- Parameters -->
 
   <!-- Lower folded-aluminum chassis -->
@@ -650,7 +656,7 @@
     <always_on>true</always_on>
     <update_rate>30</update_rate>
 
-    <topic>camera</topic>
+    <topic>${gz_prefix}/camera</topic>
 
     <optical_frame_id>camera_optical_frame</optical_frame_id>
 
@@ -728,7 +734,7 @@
       <pose>0 0 0 0 0 0</pose>
 
       <!-- Gazebo Transport topic -->
-      <topic>/scan</topic>
+      <topic>${gz_prefix}/scan</topic>
 
       <!-- Frame carried in the LiDAR message -->
       <gz_frame_id>lidar_link</gz_frame_id>
@@ -777,9 +783,9 @@
       <wheel_radius>${wheel_radius}</wheel_radius>
 
       <!-- Gazebo command / odometry topics -->
-      <topic>/cmd_vel</topic>
-      <odom_topic>/odom</odom_topic>
-      <tf_topic>/tf</tf_topic>
+      <topic>${gz_prefix}/cmd_vel</topic>
+      <odom_topic>${gz_prefix}/odom</odom_topic>
+      <tf_topic>${gz_prefix}/tf</tf_topic>
 
       <!-- Odometry frame -->
       <frame_id>odom</frame_id>
@@ -795,7 +801,7 @@
   <plugin
     filename="gz-sim-joint-state-publisher-system"
     name="gz::sim::systems::JointStatePublisher">
-    <topic>joint_states</topic>
+    <topic>${gz_prefix}/joint_states</topic>
   </plugin>
 </gazebo>
 </robot>

@@ -1,0 +1,37 @@
+# multirobot_map_merge (m-explore-jazzy) for launch/multi_robot_simulation.launch.py.
+# Merges /robot1/map and /robot2/map into /map (frame world = robot1's map frame)
+# and publishes what the robots need to explore the merged map together:
+# world -> map on each robot's TF tree and /robotN/merged_map.
+map_merge:
+  ros__parameters:
+    # slam_toolbox maps change size and origin: embed them in one canvas,
+    # placed by init_pose_* (each map frame starts at its robot's spawn pose)
+    expand_slam_maps_to_common_canvas: true
+    expand_slam_maps_margin_m: 1.0
+    expand_slam_maps_apply_init_pose: true
+    merging_rate: 4.0
+    discovery_rate: 0.5
+    estimation_rate: 0.5
+    estimation_confidence: 0.6
+    robot_map_topic: map
+    robot_map_updates_topic: map_updates
+    robot_namespace: ""
+    merged_map_topic: map
+    world_frame: world
+    publish_robot_map_tf: true
+    robot_map_frame: map
+    publish_robot_maps: true
+    robot_merged_map_topic: merged_map
+    known_init_poses: true
+
+    # Spawn poses relative to robot1 (ROBOTS in multi_robot_simulation.launch.py):
+    # robot1 (-1.5, -1.5), robot2 (1.5, 1.5)
+    /robot1/map_merge/init_pose_x: 0.0
+    /robot1/map_merge/init_pose_y: 0.0
+    /robot1/map_merge/init_pose_z: 0.0
+    /robot1/map_merge/init_pose_yaw: 0.0
+
+    /robot2/map_merge/init_pose_x: 3.0
+    /robot2/map_merge/init_pose_y: 3.0
+    /robot2/map_merge/init_pose_z: 0.0
+    /robot2/map_merge/init_pose_yaw: 0.0

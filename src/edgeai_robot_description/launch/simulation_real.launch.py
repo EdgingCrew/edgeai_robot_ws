@@ -1,8 +1,10 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PythonExpression
 
 from launch_ros.actions import Node
 
@@ -18,6 +20,38 @@ def generate_launch_description():
 
     pkg_share = get_package_share_directory(package_name)
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
+    pkg_slam_toolbox = get_package_share_directory('slam_toolbox')
+    pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
+
+    headless_arg = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run Gazebo without its GUI (server only)'
+    )
+
+    slam_arg = DeclareLaunchArgument(
+        'slam',
+        default_value='true',
+        description='Start SLAM toolbox online async mapping'
+    )
+
+    slam_params_file = os.path.join(
+        pkg_share,
+        'config',
+        'slam_toolbox.yaml'
+    )
+
+    nav_arg = DeclareLaunchArgument(
+        'nav',
+        default_value='true',
+        description='Start Nav2 navigation servers (navigate_to_pose)'
+    )
+
+    nav2_params_file = os.path.join(
+        pkg_share,
+        'config',
+        'nav2_params.yaml'
+    )
 
     # New realistic robot model
     xacro_file = os.path.join(
@@ -50,7 +84,15 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'gz_args': f'-r {world_file}'
+            'gz_args': [
+                '-r ',
+                PythonExpression([
+                    "'-s ' if '",
+                    LaunchConfiguration('headless'),
+                    "'.lower() == 'true' else ''"
+                ]),
+                world_file
+            ]
         }.items()
     )
 
@@ -123,10 +165,48 @@ def generate_launch_description():
         ]
     )
 
+    # SLAM toolbox mapping on simulation time
+    slam = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                pkg_slam_toolbox,
+                'launch',
+                'online_async_launch.py'
+            )
+        ),
+        launch_arguments={
+            'slam_params_file': slam_params_file,
+            'use_sim_time': 'true'
+        }.items(),
+        condition=IfCondition(LaunchConfiguration('slam'))
+    )
+
+    # Nav2 navigation on simulation time; SLAM provides map -> odom
+    nav2 = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                pkg_nav2_bringup,
+                'launch',
+                'navigation_launch.py'
+            )
+        ),
+        launch_arguments={
+            'params_file': nav2_params_file,
+            'use_sim_time': 'true',
+            'autostart': 'true'
+        }.items(),
+        condition=IfCondition(LaunchConfiguration('nav'))
+    )
+
     return LaunchDescription([
+        headless_arg,
+        slam_arg,
+        nav_arg,
         gazebo,
         robot_state_publisher,
         spawn_robot,
         bridge,
         camera_sensor_tf,
+        slam,
+        nav2,
     ])
