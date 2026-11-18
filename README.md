@@ -120,7 +120,7 @@ The package also contains `src/edgeai_robot_description/maps/edgeai_arena.yaml` 
 
 ## Two robots: map merging and exploration
 
-`launch/multi_robot_simulation.launch.py` starts the rescue arena (`worlds/rescue_arena.sdf`) with two robots in the start area, `robot1` at (0.5, 0.5) and `robot2` at (1.1, 0.5), both facing +y. The arena is 5 m x 5 m with its origin at the outer south-west corner, so all coordinates match the arena sketch: walls W1, W1b and W2, obstacles O2 and O3, and two ArUco markers (`DICT_4X4_50`, 0.15 m) on both sides of a sign on a 5 cm post: id 0 for the single target S1 at (1.0, 4.1), facing east, and id 1 for the cooperative target C1 at (4.1, 1.0), facing north, each towards the entrance of its room. The signs hang from 0.25 to 0.475 m, above the robot (0.175 m), and the LiDAR sees only the post. Each robot runs in its own namespace (`/robot1/scan`, `/robot1/cmd_vel`, ..., its own TF tree on `/robot1/tf`) with its own SLAM toolbox and Nav2. Map merging (`multirobot_map_merge`) and frontier exploration (`explore_lite`) come from the [m-explore-jazzy](https://github.com/EdgingCrew/m-explore-jazzy) workspace and run in its Pixi environment; both environments use CycloneDDS on domain 0, so the nodes see each other.
+`launch/multi_robot_simulation.launch.py` starts the rescue arena (`worlds/rescue_arena.sdf`) with two robots in the start area, `robot1` at (0.5, 0.5) and `robot2` at (1.1, 0.5), both facing +y. The arena is 5 m x 5 m with its origin at the outer south-west corner, so all coordinates match the arena sketch: walls W1, W1b and W2, obstacles O2 and O3, and two ArUco markers (`DICT_4X4_50`, 0.15 m, with a red or blue ring around them, like the target areas in the sketch) on both sides of a sign on a 5 cm post: id 0 for the single target S1 at (1.0, 4.1), facing east, and id 1 for the cooperative target C1 at (4.1, 1.0), facing north, each towards the entrance of its room. The signs hang from 0.25 to 0.475 m, above the robot (0.175 m), and the LiDAR sees only the post. Each robot runs in its own namespace (`/robot1/scan`, `/robot1/cmd_vel`, ..., its own TF tree on `/robot1/tf`) with its own SLAM toolbox and Nav2. Map merging (`multirobot_map_merge`) and frontier exploration (`explore_lite`) come from the [m-explore-jazzy](https://github.com/EdgingCrew/m-explore-jazzy) workspace and run in its Pixi environment; both environments use CycloneDDS on domain 0, so the nodes see each other.
 
 By default (`use_merged_map:=true`) each robot's Nav2 global costmap uses the merged map from map_merge, so a robot can plan into areas only the other robot has seen, and the robots explore the merged map together, spreading out to different frontiers. Start map_merge before or right after the simulation: the global costmaps wait for the `world -> map` transform it publishes, and until then print `Timed out waiting for transform from base_footprint to world ... frame does not exist`. With `use_merged_map:=false` each robot plans on its own SLAM map.
 
@@ -159,6 +159,30 @@ Notes:
 - Only one `/clock` is bridged for the world; a bridge per robot would publish it twice and step simulation time backwards.
 - Two RGB-D cameras and two GPU lidars are heavy: the simulation ran at about 0.3x real time in a test. Use `headless:=true` to skip the Gazebo GUI.
 
+### ArUco targets
+
+The launch file also starts `aruco_targets` (`scripts/aruco_targets`), one node for both robots' cameras. It finds the markers in `/robotN/camera/image` (`DICT_4X4_50`, 0.15 m, intrinsics from `/robotN/camera/camera_info`), computes each marker's position with `solvePnP` and moves it into `world` with that robot's TF tree, so like the robots' Nav2 it needs map_merge running. Per marker id it keeps the median of all observations. The colour of the ring around the marker gives the target type: red is a single (`normal`) target with a 0.5 m rescue zone around the marker, blue a `cooperative` target with a 0.7 m zone, as in the arena sketch. A marker is listed once its colour has been recognised.
+
+The target list is written to `~/.ros/aruco_targets.yaml` whenever it changes, so it is complete once the exploration is. It has the format of the task-allocation planner's target file (`target_path_file` of its `planner_node`), plus fields the planner ignores:
+
+```yaml
+targets:
+- id: '0'           # ArUco marker id
+  type: normal      # normal (red ring) or cooperative (blue ring)
+  x: 1.004          # marker position in world, the arena frame (m)
+  y: 4.106
+  radius: 0.5       # rescue zone around the marker (m)
+  colour: red
+  observations: 6   # detections the position is the median of
+- id: '1'
+  type: cooperative
+  ...
+```
+
+Both RViz windows show the targets (`/aruco_targets`): the rescue zone as a red or blue disc, the marker as a post and a label `id: type`.
+
+Parameters (`--ros-args -p name:=value`, or in the launch file): `output_file` (`~/.ros/aruco_targets.yaml`), `robots` (`[robot1, robot2]`), `world_frame` (`world`), `optical_frame` (`camera_optical_frame`), `max_distance` (3.0 m, farther detections are ignored), `dictionary` (`DICT_4X4_50`), `marker_size` (0.15 m).
+
 ## Known limitation: odometry drift during collisions
 
 In the reported movement tests, normal straight driving stayed synchronized between Gazebo and RViz, and an explicit stop command stopped the robot. When the robot contacted a wall or obstacle, its physical motion in Gazebo stopped while `/odom` continued changing and the robot in RViz continued moving.
@@ -175,6 +199,7 @@ src/edgeai_robot_description/
   urdf/edgeai_robot_real.urdf.xacro   Current robot model
   worlds/empty.sdf                   Simulation world (single robot)
   worlds/rescue_arena.sdf            Rescue arena (two robots, ArUco markers)
+  scripts/aruco_targets              ArUco target localisation (writes ~/.ros/aruco_targets.yaml)
   rviz/realistic_robot.rviz           RViz configuration
   config/slam_toolbox.yaml           Mapping parameters
   maps/                             Packaged map resources
