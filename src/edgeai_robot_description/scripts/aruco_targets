@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""Locate the ArUco target markers with all robots' cameras and keep a target list.
+
+Every robot's camera image is searched for markers; solvePnP gives each marker's
+position in the camera's optical frame, the robot's own TF tree (/<robot>/tf) moves
+it into the shared world frame (the arena frame, see config/map_merge_params.yaml).
+Per marker id the median position over all observations is kept. The colour of the
+ring around the marker on the sign gives the target type: red is a single (normal)
+target, blue a cooperative one, each with a circular rescue zone around the marker.
+
+The list is written to output_file in the format of the task-allocation planner
+(targets: [{id, type, x, y, ...}]) whenever it changes, so it is complete once the
+exploration is, and published as RViz markers on /aruco_targets.
+"""
+import os
+
+import cv2
+from geometry_msgs.msg import PointStamped
+import numpy as np
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
+from rclpy.time import Time
+from sensor_msgs.msg import CameraInfo, Image
+from tf2_geometry_msgs import do_transform_point
+from tf2_msgs.msg import TFMessage
+from tf2_ros import Buffer, TransformException
+from visualization_msgs.msg import Marker, MarkerArray
+import yaml
+
+# Ring colour on the sign -> planner target type, rescue zone radius (m), RViz colour
+TYPES = {
+    'red': ('normal', 0.5, (0.9, 0.2, 0.2)),
+    'blue': ('cooperative', 0.7, (0.2, 0.4, 0.9)),
+}
+# Centre of the colour ring in marker half-sides (texture: white margin to 1.25, colour to 1.5)
+RING = 1.375
+
+
+def ring_colour(rgb, rvec, tvec, K, dist, half):
+    """'red', 'blue' or None from the image pixels on the colour ring around a marker."""
+    r = RING * half
+    t = np.linspace(-r, r, 7)
+    ring = [(x, y, 0.0) for x in t for y in (-r, r)] + [(x, y, 0.0) for y in t for x in (-r, r)]
+    px, _ = cv2.projectPoints(np.array(ring, np.float32), rvec, tvec, K, dist)
+    px = px.reshape(-1, 2).round().astype(int)
+    inside = ((px[:, 0] >= 0) & (px[:, 0] < rgb.shape[1]) &
+              (px[:, 1] >= 0) & (px[:, 1] < rgb.shape[0]))
+    if inside.sum() < len(px) // 2:
+        return None
+    red, _, blue = rgb[px[inside, 1], px[inside, 0]].astype(float).mean(axis=0)
+    if red - blue > 40:
+        return 'red'
+    if blue - red > 40:
+        return 'blue'
+    return None
+
+
+class ArucoTargets(Node):
+
+    def __init__(self):
+        super().__init__('aruco_targets')
+        robots = self.declare_parameter('robots', ['robot1', 'robot2']).value
+        self.world_frame = self.declare_parameter('world_frame', 'world').value
+        self.optical_frame = self.declare_parameter('optical_frame', 'camera_optical_frame').value
+        self.max_distance = self.declare_parameter('max_distance', 3.0).value
+        self.output_file = os.path.expanduser(
+            self.declare_parameter('output_file', '~/.ros/aruco_targets.yaml').value)
+        dictionary = self.declare_parameter('dictionary', 'DICT_4X4_50').value
+        self.half = self.declare_parameter('marker_size', 0.15).value / 2.0
+
+        self.detector = cv2.aruco.ArucoDetector(
+            cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dictionary)),
+            cv2.aruco.DetectorParameters())
+        s = self.half
+        # Marker corners in the marker frame, in cv2.aruco's order
+        self.corners = np.array([[-s, s, 0], [s, s, 0], [s, -s, 0], [-s, -s, 0]], np.float32)
+
+        self.seen = {}  # marker id -> {'xy': [(x, y), ...], 'colours': {colour: count}}
+        self.cameras = {}
+        latched = QoSProfile(depth=100, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        for robot in robots:
+            camera = {'tf': Buffer(), 'K': None, 'dist': None, 'last': None}
+            self.cameras[robot] = camera
+            # Each robot has its own TF tree; filled by hand, like scan_robot_filter
+            self.create_subscription(
+                TFMessage, f'/{robot}/tf', lambda m, b=camera['tf']: self.store(b, m, False), 100)
+            self.create_subscription(
+                TFMessage, f'/{robot}/tf_static', lambda m, b=camera['tf']: self.store(b, m, True),
+                latched)
+            self.create_subscription(
+                CameraInfo, f'/{robot}/camera/camera_info',
+                lambda m, c=camera: self.on_info(c, m), qos_profile_sensor_data)
+            self.create_subscription(
+                Image, f'/{robot}/camera/image',
+                lambda m, r=robot: self.on_image(r, m), qos_profile_sensor_data)
+
+        self.marker_pub = self.create_publisher(MarkerArray, '/aruco_targets', 10)
+        self.written = None
+        self.create_timer(1.0, self.update)
+        self.get_logger().info(f'Looking for {dictionary} markers with {robots}, '
+                               f'writing {self.output_file}')
+
+    @staticmethod
+    def store(buf, msg, static):
+        for t in msg.transforms:
+            if static:
+                buf.set_transform_static(t, 'aruco_targets')
+            else:
+                buf.set_transform(t, 'aruco_targets')
+
+    @staticmethod
+    def on_info(camera, msg):
+        camera['K'] = np.array(msg.k, np.float64).reshape(3, 3)
+        camera['dist'] = np.array(msg.d, np.float64) if len(msg.d) else np.zeros(5)
+
+    def on_image(self, robot, msg):
+        camera = self.cameras[robot]
+        stamp = Time.from_msg(msg.header.stamp)
+        # 5 Hz per camera is plenty for static markers
+        if camera['K'] is None or (camera['last'] and (stamp - camera['last']).nanoseconds < 2e8):
+            return
+        camera['last'] = stamp
+        rgb = np.frombuffer(msg.data, np.uint8).reshape(msg.height, msg.width, 3)
+        corners, ids, _ = self.detector.detectMarkers(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY))
+        if ids is None:
+            return
+        try:
+            optical_to_world = camera['tf'].lookup_transform(
+                self.world_frame, self.optical_frame, stamp)
+        except TransformException as ex:
+            self.get_logger().warn(f'{robot}: no transform at the image time: {ex}',
+                                   throttle_duration_sec=5.0)
+            return
+        for marker_corners, marker_id in zip(corners, ids.flatten()):
+            ok, rvec, tvec = cv2.solvePnP(self.corners, marker_corners.reshape(4, 2),
+                                          camera['K'], camera['dist'],
+                                          flags=cv2.SOLVEPNP_IPPE_SQUARE)
+            if not ok or np.linalg.norm(tvec) > self.max_distance:
+                continue
+            p = PointStamped()
+            p.point.x, p.point.y, p.point.z = (float(v) for v in tvec.flatten())
+            world = do_transform_point(p, optical_to_world).point
+            target = self.seen.setdefault(int(marker_id), {'xy': [], 'colours': {}})
+            target['xy'] = target['xy'][-499:] + [(world.x, world.y)]
+            colour = ring_colour(rgb, rvec, tvec, camera['K'], camera['dist'], self.half)
+            if colour:
+                target['colours'][colour] = target['colours'].get(colour, 0) + 1
+
+    def targets(self):
+        """Targets whose type is known, in the planner's format plus zone radius and colour."""
+        result = []
+        for marker_id, seen in sorted(self.seen.items()):
+            if not seen['colours']:
+                continue
+            colour = max(seen['colours'], key=seen['colours'].get)
+            kind, radius, _ = TYPES[colour]
+            x, y = np.median(np.array(seen['xy']), axis=0)
+            result.append({'id': str(marker_id), 'type': kind, 'x': round(float(x), 3),
+                           'y': round(float(y), 3), 'radius': radius, 'colour': colour,
+                           'observations': len(seen['xy'])})
+        return result
+
+    def update(self):
+        targets = self.targets()
+        if targets != self.written:
+            tmp = self.output_file + '.tmp'
+            with open(tmp, 'w') as f:
+                yaml.safe_dump({'targets': targets}, f, sort_keys=False)
+            os.replace(tmp, self.output_file)  # never leave a half-written file
+            if [t['id'] for t in targets] != [t['id'] for t in self.written or []]:
+                self.get_logger().info(
+                    'Targets: ' + ', '.join(f'{t["id"]} {t["type"]} ({t["x"]:.2f}, {t["y"]:.2f})'
+                                            for t in targets))
+            self.written = targets
+        self.publish_markers(targets)
+
+    def publish_markers(self, targets):
+        markers = MarkerArray()
+        stamp = self.get_clock().now().to_msg()
+        for i, target in enumerate(targets):
+            r, g, b = TYPES[target['colour']][2]
+
+            def marker(ns, kind, z, scale, alpha):
+                m = Marker()
+                m.header.frame_id = self.world_frame
+                m.header.stamp = stamp
+                m.ns, m.id, m.type, m.action = ns, i, kind, Marker.ADD
+                m.pose.position.x, m.pose.position.y, m.pose.position.z = target['x'], target['y'], z
+                m.pose.orientation.w = 1.0
+                m.scale.x, m.scale.y, m.scale.z = scale
+                m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, alpha
+                markers.markers.append(m)
+                return m
+
+            d = 2.0 * target['radius']
+            marker('zone', Marker.CYLINDER, 0.005, (d, d, 0.01), 0.3)
+            marker('marker', Marker.CYLINDER, 0.24, (0.08, 0.08, 0.48), 1.0)
+            label = marker('label', Marker.TEXT_VIEW_FACING, 0.65, (0.0, 0.0, 0.15), 1.0)
+            label.text = f'{target["id"]}: {target["type"]}'
+        self.marker_pub.publish(markers)
+
+
+def main():
+    rclpy.init()
+    try:
+        rclpy.spin(ArucoTargets())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        rclpy.try_shutdown()
+
+
+if __name__ == '__main__':
+    main()

@@ -132,8 +132,9 @@ global_costmap:
       # Planner only: 0.17 m + 0.11 m keeps the robot centre 0.28 m (its turning
       # radius) from obstacles, so NavFn doesn't route through gaps the controller
       # (local costmap, 0.05 m padding) refuses or can't turn in, e.g. the 0.55 m
-      # gap between O2 and W1. A robot that got closer backs up when planning fails
-      # (navigate_to_pose_edgeai.xml).
+      # gap between O2 and W1. More (0.16 m) nearly closed the 0.74 m way into the
+      # C1 room between W2 and O3. A robot that got closer backs up when planning
+      # fails (navigate_to_pose_edgeai.xml).
       footprint_padding: 0.11
       resolution: 0.05
       # Unknown space must stay plannable for frontier exploration

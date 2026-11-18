@@ -12,7 +12,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 install(
-  PROGRAMS scripts/scan_robot_filter
+  PROGRAMS scripts/scan_robot_filter scripts/aruco_targets
   DESTINATION lib/${PROJECT_NAME}
 )
 

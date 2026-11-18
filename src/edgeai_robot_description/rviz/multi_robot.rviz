@@ -180,6 +180,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: <robot_namespace>/explore/frontiers
       Value: true
+    # ArUco targets (aruco_targets node): rescue zone, marker, id and type
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: ArUco targets
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /aruco_targets
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

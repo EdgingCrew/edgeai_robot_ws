@@ -310,12 +310,23 @@ def generate_launch_description():
         for robot in ROBOTS
     ]
 
+    # ArUco targets seen by any robot's camera, in world (needs map_merge running):
+    # written to ~/.ros/aruco_targets.yaml for the planner, shown in RViz
+    aruco_targets = Node(
+        package='edgeai_robot_description',
+        executable='aruco_targets',
+        name='aruco_targets',
+        output='screen',
+        parameters=[{'robots': [r['name'] for r in ROBOTS], 'use_sim_time': True}],
+    )
+
     return LaunchDescription([
         headless_arg,
         use_merged_map_arg,
         rviz_arg,
         gazebo,
         clock_bridge,
+        aruco_targets,
         *robots,
     ])
 
