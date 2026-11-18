@@ -12,6 +12,11 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 install(
+  PROGRAMS scripts/scan_robot_filter
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
   DIRECTORY
     launch
     urdf

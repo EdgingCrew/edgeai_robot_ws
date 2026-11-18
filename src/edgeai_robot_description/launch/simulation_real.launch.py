@@ -7,6 +7,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
 
 from launch_ros.actions import Node
+from nav2_common.launch import RewrittenYaml
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -191,7 +192,14 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'params_file': nav2_params_file,
+            'params_file': RewrittenYaml(
+                source_file=nav2_params_file,
+                param_rewrites={
+                    'bt_navigator.ros__parameters.default_nav_to_pose_bt_xml': os.path.join(
+                        pkg_share, 'config', 'navigate_to_pose_edgeai.xml'),
+                },
+                convert_types=True,
+            ),
             'use_sim_time': 'true',
             'autostart': 'true'
         }.items(),

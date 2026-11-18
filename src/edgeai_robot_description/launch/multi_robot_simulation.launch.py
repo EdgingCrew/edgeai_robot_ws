@@ -1,4 +1,5 @@
-"""Two EdgeAI robots in one Gazebo world, each with its own SLAM toolbox and Nav2.
+"""Two EdgeAI robots in the rescue arena (worlds/rescue_arena.sdf), each with its
+own SLAM toolbox and Nav2.
 
 Every robot lives in its own namespace (/robot1, /robot2) with its own TF tree
 (/robotN/tf). Maps (/robotN/map) are merged by multirobot_map_merge and the
@@ -37,11 +38,11 @@ from ament_index_python.packages import get_package_share_directory
 import xacro
 
 
-# Spawn poses in the arena. map_merge needs them relative to robot1 as
+# Spawn poses in the start area, facing into the arena. They are also map_merge's
 # init_pose_* (config/map_merge_params.yaml): keep both in sync.
 ROBOTS = [
-    {'name': 'robot1', 'x': -1.5, 'y': -1.5, 'yaw': 0.0},
-    {'name': 'robot2', 'x': 1.5, 'y': 1.5, 'yaw': 0.0},
+    {'name': 'robot1', 'x': 0.5, 'y': 0.5, 'yaw': 1.5708},
+    {'name': 'robot2', 'x': 1.1, 'y': 0.5, 'yaw': 1.5708},
 ]
 
 
@@ -111,6 +112,18 @@ def robot_actions(robot, pkg_share, pkg_nav2_bringup, use_merged_map, use_rviz):
         remappings=remappings,
     )
 
+    scan_filter = Node(
+        package='edgeai_robot_description',
+        executable='scan_robot_filter',
+        name='scan_robot_filter',
+        output='screen',
+        parameters=[{
+            'other_robots': [r['name'] for r in ROBOTS if r['name'] != name],
+            'use_sim_time': True,
+        }],
+        remappings=remappings,
+    )
+
     # slam_toolbox is a lifecycle node: configure and activate it on startup
     slam = LifecycleNode(
         package='slam_toolbox',
@@ -127,7 +140,8 @@ def robot_actions(robot, pkg_share, pkg_nav2_bringup, use_merged_map, use_rviz):
             ),
             {'use_sim_time': True, 'use_lifecycle_manager': False},
         ],
-        remappings=remappings + [('/scan', 'scan'), ('/map', 'map')],
+        # scan_filtered: without the other robots, so they leave no ghosts in the map
+        remappings=remappings + [('/scan', 'scan_filtered'), ('/map', 'map')],
     )
     slam_configure = EmitEvent(
         event=ChangeState(
@@ -156,13 +170,13 @@ def robot_actions(robot, pkg_share, pkg_nav2_bringup, use_merged_map, use_rviz):
     nav2_params = RewrittenYaml(
         source_file=os.path.join(pkg_share, 'config', 'nav2_params.yaml'),
         param_rewrites={
+            'bt_navigator.ros__parameters.default_nav_to_pose_bt_xml': os.path.join(
+                pkg_share, 'config', 'navigate_to_pose_edgeai.xml'),
             'bt_navigator.ros__parameters.odom_topic': f'/{name}/odom',
             'local_costmap.local_costmap.ros__parameters.obstacle_layer.scan.topic':
                 f'/{name}/scan',
             'global_costmap.global_costmap.ros__parameters.obstacle_layer.scan.topic':
                 f'/{name}/scan',
-            'collision_monitor.ros__parameters.FootprintApproach.footprint_topic':
-                f'/{name}/local_costmap/published_footprint',
             # Merged map of map_merge (frame world) or the robot's own SLAM map
             'global_costmap.global_costmap.ros__parameters.global_frame': PythonExpression(
                 ["'world' if '", use_merged_map, "'.lower() == 'true' else 'map'"]
@@ -229,6 +243,7 @@ def robot_actions(robot, pkg_share, pkg_nav2_bringup, use_merged_map, use_rviz):
         spawn_robot,
         bridge,
         camera_sensor_tf,
+        scan_filter,
         slam,
         slam_configure,
         slam_activate,
@@ -274,7 +289,7 @@ def generate_launch_description():
                     LaunchConfiguration('headless'),
                     "'.lower() == 'true' else ''"
                 ]),
-                os.path.join(pkg_share, 'worlds', 'empty.sdf'),
+                os.path.join(pkg_share, 'worlds', 'rescue_arena.sdf'),
             ]
         }.items()
     )

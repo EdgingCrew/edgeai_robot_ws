@@ -758,6 +758,14 @@
           <resolution>0.01</resolution>
         </range>
 
+        <!-- A noiseless LiDAR ends every ray exactly on a wall face. If the face lies
+             inside a map cell, SLAM then marks that cell free and the wall goes missing. -->
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+
       </lidar>
 
       <always_on>true</always_on>

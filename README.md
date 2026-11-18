@@ -120,7 +120,7 @@ The package also contains `src/edgeai_robot_description/maps/edgeai_arena.yaml` 
 
 ## Two robots: map merging and exploration
 
-`launch/multi_robot_simulation.launch.py` starts the same world with two robots, `robot1` at (-1.5, -1.5) and `robot2` at (1.5, 1.5). Each robot runs in its own namespace (`/robot1/scan`, `/robot1/cmd_vel`, ..., its own TF tree on `/robot1/tf`) with its own SLAM toolbox and Nav2. Map merging (`multirobot_map_merge`) and frontier exploration (`explore_lite`) come from the [m-explore-jazzy](https://github.com/EdgingCrew/m-explore-jazzy) workspace and run in its Pixi environment; both environments use CycloneDDS on domain 0, so the nodes see each other.
+`launch/multi_robot_simulation.launch.py` starts the rescue arena (`worlds/rescue_arena.sdf`) with two robots in the start area, `robot1` at (0.5, 0.5) and `robot2` at (1.1, 0.5), both facing +y. The arena is 5 m x 5 m with its origin at the outer south-west corner, so all coordinates match the arena sketch: walls W1, W1b and W2, obstacles O2 and O3, and two ArUco markers (`DICT_4X4_50`, 0.15 m) on both sides of a sign on a 5 cm post: id 0 for the single target S1 at (1.0, 4.1), facing east, and id 1 for the cooperative target C1 at (4.1, 1.0), facing north, each towards the entrance of its room. The signs hang from 0.25 to 0.475 m, above the robot (0.175 m), and the LiDAR sees only the post. Each robot runs in its own namespace (`/robot1/scan`, `/robot1/cmd_vel`, ..., its own TF tree on `/robot1/tf`) with its own SLAM toolbox and Nav2. Map merging (`multirobot_map_merge`) and frontier exploration (`explore_lite`) come from the [m-explore-jazzy](https://github.com/EdgingCrew/m-explore-jazzy) workspace and run in its Pixi environment; both environments use CycloneDDS on domain 0, so the nodes see each other.
 
 By default (`use_merged_map:=true`) each robot's Nav2 global costmap uses the merged map from map_merge, so a robot can plan into areas only the other robot has seen, and the robots explore the merged map together, spreading out to different frontiers. Start map_merge before or right after the simulation: the global costmaps wait for the `world -> map` transform it publishes, and until then print `Timed out waiting for transform from base_footprint to world ... frame does not exist`. With `use_merged_map:=false` each robot plans on its own SLAM map.
 
@@ -141,18 +141,18 @@ ros2 launch multirobot_map_merge map_merge.launch.py \
   params_file:=/path/to/edgeai_robot_ws/src/edgeai_robot_description/config/map_merge_params.yaml
 ```
 
-Terminals 3 and 4, exploration (m-explore-jazzy repository, `pixi shell`):
+Terminals 3 and 4, exploration (m-explore-jazzy repository, `pixi shell`), with the arena's explore parameters from `config/explore_params.yaml`:
 
 ```bash
 ros2 launch explore_lite explore.launch.py namespace:=robot1 \
-  params_file:=$(ros2 pkg prefix explore_lite)/share/explore_lite/config/params_multirobot.yaml
+  params_file:=/path/to/edgeai_robot_ws/src/edgeai_robot_description/config/explore_params.yaml
 ros2 launch explore_lite explore.launch.py namespace:=robot2 \
-  params_file:=$(ros2 pkg prefix explore_lite)/share/explore_lite/config/params_multirobot.yaml
+  params_file:=/path/to/edgeai_robot_ws/src/edgeai_robot_description/config/explore_params.yaml
 ```
 
-The merged map is `/map` in frame `world` (robot1's map frame); `rviz2 -d map_merge/launch/map_merge.rviz` from m-explore-jazzy shows it. Each robot also gets `/robotN/merged_map`, the merged map with its own map on top, which its costmap and explore_lite use.
+The merged map is `/map` in frame `world`, which is the arena frame; `rviz2 -d map_merge/launch/map_merge.rviz` from m-explore-jazzy shows it. Each robot also gets `/robotN/merged_map`, the merged map with its own map on top, which its costmap and explore_lite use.
 
-If you change the spawn poses in the launch file (`ROBOTS`), change `init_pose_*` in `config/map_merge_params.yaml` to match: they are robot2's start pose relative to robot1's.
+If you change the spawn poses in the launch file (`ROBOTS`), change `init_pose_*` in `config/map_merge_params.yaml` to match: they are each robot's spawn pose in the arena, which places its SLAM map in `world`.
 
 Notes:
 - The launch file runs each robot's Nav2 servers in one process (`use_composition`). With one process per server, two robots exceed CycloneDDS's participant limit when it cannot use multicast discovery (e.g. on Wi-Fi): nodes die with "Failed to find a free participant index".
@@ -173,7 +173,8 @@ start_sim.sh                         Simulation + RViz entry point
 src/edgeai_robot_description/
   launch/simulation_real.launch.py   Realistic simulation and bridges
   urdf/edgeai_robot_real.urdf.xacro   Current robot model
-  worlds/empty.sdf                   Simulation world
+  worlds/empty.sdf                   Simulation world (single robot)
+  worlds/rescue_arena.sdf            Rescue arena (two robots, ArUco markers)
   rviz/realistic_robot.rviz           RViz configuration
   config/slam_toolbox.yaml           Mapping parameters
   maps/                             Packaged map resources

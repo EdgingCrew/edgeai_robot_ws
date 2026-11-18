@@ -1,0 +1,30 @@
+# explore_lite (m-explore-jazzy) for the two robots in worlds/rescue_arena.sdf.
+# explore_lite's config/params_multirobot.yaml, adapted to the small 5 m x 5 m arena
+# (changes marked "arena:"). Needs map_merge with config/map_merge_params.yaml.
+/**:
+  ros__parameters:
+    robot_base_frame: base_link
+    return_to_init: true
+    # this robot's merged map (map_merge publish_robot_maps): global frontiers
+    costmap_topic: merged_map
+    costmap_updates_topic: merged_map_updates
+    visualize: true
+    planner_frequency: 0.5
+    # arena: blacklist a goal without progress after 15 s (default 30): frontiers
+    # in the arena's tight corners are often unreachable
+    progress_timeout: 15.0
+    potential_scale: 3.0
+    orientation_scale: 0.0
+    gain_scale: 1.0
+    # arena: a frontier within 1 m (default 2) of another robot's goal is left to
+    # that robot. With 2 m almost every frontier in the arena counted as claimed.
+    coordination_radius: 1.0
+    coordination_scale: 6.0
+    robot_goals_topic: /explore/robot_goals
+    transform_tolerance: 0.3
+    # arena: ignore frontiers smaller than 0.5 m (default 0.3), e.g. the never-seen
+    # inside of an obstacle, which robots otherwise try to reach and get stuck at
+    min_frontier_size: 0.5
+    # keep looking for this long (s) before finishing when no frontier is left
+    completion_timeout: 20.0
+    use_sim_time: true

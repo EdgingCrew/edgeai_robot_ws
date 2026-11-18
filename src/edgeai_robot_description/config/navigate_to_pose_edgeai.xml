@@ -1,0 +1,89 @@
+
+<!--
+  nav2_bt_navigator's navigate_to_pose_w_replanning_and_recovery.xml (Jazzy) with two
+  changes, marked "edgeai:":
+  - when planning fails, back up a little before replanning (the planner keeps a
+    larger distance from obstacles than the robot may already have);
+  - when the controller is stuck, turn a little towards the path (AngleTowardsPath from
+    edgeai_bt_plugins, then Spin; the other way if that is blocked) and step forward,
+    or back if forward is blocked,
+    before retrying. A robot wedged where it can't turn all the way (e.g. in a narrow
+    gap) repeats these small moves until it has room (bounded by the retries below).
+
+  This Behavior Tree replans the global path periodically at 1 Hz and it also has
+  recovery actions specific to planning / control as well as general system issues.
+  This will be continuous if a kinematically valid planner is selected.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+            <Sequence>
+              <!-- edgeai: back up a little on every planning failure. The planner keeps
+                   the robot centre 0.28 m from obstacles (global footprint_padding), so a
+                   robot that got closer can't plan until it is out of that band.
+                   Collision-checked; if blocked, replan anyway. -->
+              <ForceSuccess>
+                <BackUp backup_dist="0.15" backup_speed="0.10"/>
+              </ForceSuccess>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+          </RecoveryNode>
+        </RateController>
+        <!-- edgeai: 4 retries (default 1), each with a small turn and step below -->
+        <RecoveryNode number_of_retries="4" name="FollowPath">
+          <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+          <Sequence>
+            <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+            <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <!-- edgeai: all moves are collision-checked; if none is possible this fails
+                 and the general recoveries below take over -->
+            <Fallback>
+              <Sequence>
+                <AngleTowardsPath path="{path}" max_angle="0.2" angle="{nudge_angle}"
+                                  opposite_angle="{nudge_opposite}"/>
+                <!-- edgeai: the other way if the turn towards the path is blocked, e.g.
+                     when it would swing the robot's rear into a post -->
+                <Fallback>
+                  <Spin spin_dist="{nudge_angle}" time_allowance="5.0"/>
+                  <Spin spin_dist="{nudge_opposite}" time_allowance="5.0"/>
+                </Fallback>
+                <ForceSuccess>
+                  <Fallback>
+                    <DriveOnHeading dist_to_travel="0.10" speed="0.10" time_allowance="5.0"/>
+                    <BackUp backup_dist="0.10" backup_speed="0.10" time_allowance="5.0"/>
+                  </Fallback>
+                </ForceSuccess>
+              </Sequence>
+              <DriveOnHeading dist_to_travel="0.10" speed="0.10" time_allowance="5.0"/>
+              <BackUp backup_dist="0.10" backup_speed="0.10" time_allowance="5.0"/>
+            </Fallback>
+          </Sequence>
+        </RecoveryNode>
+      </PipelineSequence>
+      <Sequence>
+        <Fallback>
+          <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+          <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+        </Fallback>
+        <ReactiveFallback name="RecoveryFallback">
+          <GoalUpdated/>
+          <RoundRobin name="RecoveryActions">
+            <Sequence name="ClearingActions">
+              <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57" error_code_id="{spin_error_code}"/>
+            <Wait wait_duration="5.0"/>
+            <BackUp backup_dist="0.30" backup_speed="0.15" error_code_id="{backup_code_id}"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

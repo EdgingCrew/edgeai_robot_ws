@@ -1,0 +1,228 @@
+<?xml version="1.0" ?>
+
+<!--
+  Rescue arena: 5 m x 5 m, origin at the outer south-west corner, so every
+  coordinate below is the one from the arena sketch. Walls are 0.1 m thick,
+  interior walls are centred on their sketch line. Start area: x 0..1.4, y 0..1.0.
+  ArUco markers (DICT_4X4_50, 0.15 m) on both sides of a sign on a post:
+  S1 (single target, id 0) and C1 (cooperative target, id 1).
+-->
+<sdf version="1.9">
+
+  <world name="rescue_arena">
+
+    <physics name="physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <!-- Required for GPU LiDAR / camera sensors -->
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0 0 0 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Boundary walls: outer edge on x/y = 0 and 5 -->
+    <model name="south_wall">
+      <static>true</static>
+      <pose>2.5 0.05 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>5.0 0.1 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>5.0 0.1 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="north_wall">
+      <static>true</static>
+      <pose>2.5 4.95 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>5.0 0.1 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>5.0 0.1 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="west_wall">
+      <static>true</static>
+      <pose>0.05 2.5 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 5.0 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 5.0 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="east_wall">
+      <static>true</static>
+      <pose>4.95 2.5 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 5.0 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 5.0 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- W1: (0, 3.1) -> (2.2, 3.1), extended to the far side of W1b to close the corner -->
+    <model name="wall_w1">
+      <static>true</static>
+      <pose>1.125 3.1 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>2.25 0.1 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>2.25 0.1 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- W1b: (2.2, 3.1) -> (2.2, 3.6), starting at W1's edge -->
+    <model name="wall_w1b">
+      <static>true</static>
+      <pose>2.2 3.325 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 0.55 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 0.55 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- W2: (3.4, 0) -> (3.4, 2.8) -->
+    <model name="wall_w2">
+      <static>true</static>
+      <pose>3.4 1.4 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.1 2.8 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 2.8 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- O2: centre (2.2, 2.0), 0.6 x 1.0 -->
+    <model name="obstacle_o2">
+      <static>true</static>
+      <pose>2.2 2.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.6 1.0 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.6 1.0 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- O3: centre (4.4, 3.6), 0.8 x 0.6 -->
+    <model name="obstacle_o3">
+      <static>true</static>
+      <pose>4.4 3.6 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.8 0.6 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.8 0.6 0.5</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!--
+      ArUco signs: a 5 cm post (0.25 m, seen by the LiDAR at 0.155 m) carrying a
+      0.225 m sign from 0.25 to 0.475 m, above the robot (0.175 m tall), so it can
+      drive past it. Both sides show the marker (0.15 m), centred at 0.36 m: the
+      camera (0.1 m, +-23 deg vertical) sees it whole from about 0.8 m. Each side is
+      a thin plate showing the texture on its local -x face, as in
+      aruco_demo/aruco_0.sdf. The signs face the entrances of their rooms.
+    -->
+    <!-- S1, id 0: faces east, towards the gap between W1b and the north wall -->
+    <model name="aruco_s1">
+      <static>true</static>
+      <pose>1.0 4.1 0 0 0 0</pose>
+      <link name="link">
+        <collision name="post">
+          <pose>0 0 0.125 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.25</length></cylinder></geometry>
+        </collision>
+        <visual name="post">
+          <pose>0 0 0.125 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.25</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+        <collision name="sign">
+          <pose>0 0 0.3625 0 0 3.14159</pose>
+          <geometry><box><size>0.02 0.225 0.225</size></box></geometry>
+        </collision>
+        <visual name="front">
+          <pose>0.005 0 0.3625 0 0 3.14159</pose>
+          <geometry><box><size>0.01 0.225 0.225</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse>
+            <pbr><metal><albedo_map>aruco_0.png</albedo_map><metalness>0</metalness><roughness>1</roughness></metal></pbr>
+          </material>
+        </visual>
+        <visual name="back">
+          <pose>-0.005 0 0.3625 0 0 0</pose>
+          <geometry><box><size>0.01 0.225 0.225</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse>
+            <pbr><metal><albedo_map>aruco_0.png</albedo_map><metalness>0</metalness><roughness>1</roughness></metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- C1, id 1: faces north, towards the opening of the room east of W2 -->
+    <model name="aruco_c1">
+      <static>true</static>
+      <pose>4.1 1.0 0 0 0 0</pose>
+      <link name="link">
+        <collision name="post">
+          <pose>0 0 0.125 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.25</length></cylinder></geometry>
+        </collision>
+        <visual name="post">
+          <pose>0 0 0.125 0 0 0</pose>
+          <geometry><cylinder><radius>0.025</radius><length>0.25</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+        <collision name="sign">
+          <pose>0 0 0.3625 0 0 -1.5708</pose>
+          <geometry><box><size>0.02 0.225 0.225</size></box></geometry>
+        </collision>
+        <visual name="front">
+          <pose>0 0.005 0.3625 0 0 -1.5708</pose>
+          <geometry><box><size>0.01 0.225 0.225</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse>
+            <pbr><metal><albedo_map>aruco_1.png</albedo_map><metalness>0</metalness><roughness>1</roughness></metal></pbr>
+          </material>
+        </visual>
+        <visual name="back">
+          <pose>0 -0.005 0.3625 0 0 1.5708</pose>
+          <geometry><box><size>0.01 0.225 0.225</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse>
+            <pbr><metal><albedo_map>aruco_1.png</albedo_map><metalness>0</metalness><roughness>1</roughness></metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.7 0.7 0.7 1</diffuse>
+      <specular>0 0 0 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <scene>
+      <ambient>0.5 0.5 0.5 1</ambient>
+      <background>0.15 0.15 0.15 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+  </world>
+</sdf>

@@ -27,6 +27,11 @@
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>tf2_msgs</exec_depend>
+  <exec_depend>edgeai_bt_plugins</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
