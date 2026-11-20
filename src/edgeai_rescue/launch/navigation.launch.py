@@ -20,10 +20,12 @@ from ament_index_python.packages import get_package_share_directory
 MAP_ORIGIN_IN_WORLD = (0.0, 0.0)
 
 
-def params_with_initial_pose(params_file, robot):
-    """Copy of params_file with AMCL starting at the robot's spawn pose (map frame)."""
+def params_with_initial_pose(params_file, robot, bt_xml):
+    """Copy of params_file with AMCL starting at the robot's spawn pose (map frame) and bt_xml as
+    the navigate_to_pose behaviour tree."""
     with open(params_file) as f:
         params = yaml.safe_load(f)
+    params['bt_navigator']['ros__parameters']['default_nav_to_pose_bt_xml'] = bt_xml
     params['amcl']['ros__parameters']['initial_pose'] = {
         'x': robot['x'] - MAP_ORIGIN_IN_WORLD[0],
         'y': robot['y'] - MAP_ORIGIN_IN_WORLD[1],
@@ -59,6 +61,7 @@ def generate_launch_description():
     )
 
     params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
+    bt_xml = os.path.join(pkg_share, 'config', 'navigate_to_pose_rescue.xml')
 
     actions = [map_arg, rviz_arg]
 
@@ -87,7 +90,7 @@ def generate_launch_description():
                 'namespace': name,
                 'use_namespace': 'true',
                 'map': LaunchConfiguration('map'),
-                'params_file': params_with_initial_pose(params_file, robot),
+                'params_file': params_with_initial_pose(params_file, robot, bt_xml),
                 'use_sim_time': 'true',
                 'autostart': 'true',
             }.items()

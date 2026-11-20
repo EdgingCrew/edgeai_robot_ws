@@ -58,6 +58,7 @@ pixi run python -m pytest src/edgeai_rescue
 
 - `src/edgeai_rescue/config/rescue_coordinator.yaml`: coordinator parameters (speed, dwell, solver limits, blocking).
 - `src/edgeai_rescue/config/targets_<scenario>.yaml`: targets and `precedence` rules.
+- `src/edgeai_rescue/config/nav2_params.yaml`, `navigate_to_pose_rescue.xml`: Nav2 setup per robot and its behaviour tree (short recoveries).
 - `src/edgeai_robot_description/scenarios/<scenario>.yaml`: robots, layout and file names per scenario.
 - `src/edgeai_rescue/edgeai_rescue/`:
   - `rescue_coordinator.py`: the coordinator node;

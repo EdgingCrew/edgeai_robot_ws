@@ -57,10 +57,8 @@ bt_navigator:
       plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
     navigate_through_poses:
       plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
-    # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
-    # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
-    # nav2_bt_navigator/navigate_through_poses_w_replanning_and_recovery.xml
-    # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
+    # default_nav_to_pose_bt_xml: config/navigate_to_pose_rescue.xml (short recoveries), set to
+    # its installed path by navigation.launch.py
 
     # plugin_lib_names is used to add custom BT plugins to the executor (vector of strings).
     # Built-in plugins are added automatically
@@ -77,7 +75,9 @@ controller_server:
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
-    failure_tolerance: 0.3
+    # A controller failure is mostly RPP's collision check seeing another robot ahead: keep
+    # publishing zero velocity for up to 1 s (the other robot drives on) before the BT recovers
+    failure_tolerance: 1.0
     progress_checker_plugins: ["progress_checker"]
     goal_checker_plugins: ["general_goal_checker"] # "precise_goal_checker"
     controller_plugins: ["FollowPath"]
@@ -185,22 +185,12 @@ global_costmap:
       robot_radius: 0.28
       resolution: 0.05
       track_unknown_space: true
-      plugins: ["static_layer", "robots_layer", "obstacle_layer", "inflation_layer"]
+      # No obstacle layer: the arena map is known, and the only things the lidar adds are the
+      # other robots' lidar housings. A moving robot's housing, inflated, closes a corridor like
+      # O2-W2 (0.9 m) for the robot following it, which then fails to plan until the corridor is
+      # empty. Parked robots come from robots_layer; moving ones are the local costmap's job.
+      plugins: ["static_layer", "robots_layer", "inflation_layer"]
       use_maximum: true  # robots_layer adds the other robots to the map instead of replacing it
-      obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
-        enabled: True
-        observation_sources: scan
-        scan:
-          topic: <robot_namespace>/scan
-          max_obstacle_height: 2.0
-          clearing: True
-          marking: True
-          data_type: "LaserScan"
-          raytrace_max_range: 3.0
-          raytrace_min_range: 0.0
-          obstacle_max_range: 2.5
-          obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
